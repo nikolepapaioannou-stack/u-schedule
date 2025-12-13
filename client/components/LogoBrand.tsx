@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, Text, Platform } from "react-native";
+import { View, StyleSheet, Text, Image } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { Colors, Spacing } from "@/constants/theme";
 
@@ -15,44 +15,26 @@ export function LogoBrand({
   subtitle = "Σύστημα Προγραμματισμού Εξετάσεων"
 }: LogoBrandProps) {
   const sizes = {
-    small: { uSize: 22, certSize: 16, gap: 1 },
-    medium: { uSize: 32, certSize: 22, gap: 2 },
-    large: { uSize: 48, certSize: 32, gap: 3 },
+    small: { iconSize: 28, textSize: 18, gap: 6 },
+    medium: { iconSize: 40, textSize: 26, gap: 8 },
+    large: { iconSize: 56, textSize: 36, gap: 10 },
   };
 
-  const { uSize, certSize, gap } = sizes[size];
-
-  const serifFont = Platform.select({
-    ios: "Georgia",
-    android: "serif",
-    web: "Georgia, 'Times New Roman', serif",
-  });
+  const { iconSize, textSize, gap } = sizes[size];
 
   return (
     <View style={styles.container}>
       <View style={styles.logoRow}>
+        <Image
+          source={require("../../assets/images/u-icon.png")}
+          style={{ width: iconSize, height: iconSize }}
+          resizeMode="contain"
+        />
         <Text style={[
-          styles.uLetter, 
+          styles.scheduleText, 
           { 
-            fontSize: uSize, 
-            fontFamily: serifFont,
-          }
-        ]}>
-          U
-        </Text>
-        <Text style={[
-          styles.separator, 
-          { 
-            fontSize: certSize,
-            marginHorizontal: gap,
-          }
-        ]}>
-          -
-        </Text>
-        <Text style={[
-          styles.certText, 
-          { 
-            fontSize: certSize,
+            fontSize: textSize,
+            marginLeft: gap,
           }
         ]}>
           SCHEDULE
@@ -73,21 +55,13 @@ const styles = StyleSheet.create({
   },
   logoRow: {
     flexDirection: "row",
-    alignItems: "baseline",
+    alignItems: "center",
   },
-  uLetter: {
-    fontWeight: "700",
-    color: "#1D3557",
-    letterSpacing: -0.5,
-  },
-  separator: {
-    fontWeight: "300",
-    color: "#6B7B8C",
-  },
-  certText: {
+  scheduleText: {
     fontWeight: "400",
     color: "#6B7B8C",
-    letterSpacing: 2,
+    letterSpacing: 3,
+    textTransform: "uppercase",
   },
   subtitle: {
     marginTop: Spacing.sm,
