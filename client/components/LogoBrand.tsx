@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   },
   logoRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-end",
   },
   scheduleText: {
     fontWeight: "400",
