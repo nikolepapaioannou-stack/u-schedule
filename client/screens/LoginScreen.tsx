@@ -112,12 +112,11 @@ export default function LoginScreen() {
       >
         <View style={styles.logoContainer}>
           <Image
-            source={require("../../assets/images/icon.png")}
-            style={styles.appIcon}
+            source={require("../../assets/images/logo.png")}
+            style={styles.appLogo}
             resizeMode="contain"
           />
-          <ThemedText type="hero" style={styles.title}>ExamScheduler</ThemedText>
-          <ThemedText type="body" style={[styles.subtitle, { color: theme.textSecondary }]}>
+          <ThemedText type="h2" style={[styles.subtitle, { color: theme.textSecondary }]}>
             Σύστημα Προγραμματισμού Εξετάσεων
           </ThemedText>
         </View>
@@ -200,14 +199,10 @@ const styles = StyleSheet.create({
     marginTop: Spacing["3xl"],
     marginBottom: Spacing["2xl"],
   },
-  appIcon: {
-    width: 96,
-    height: 96,
+  appLogo: {
+    width: 200,
+    height: 80,
     marginBottom: Spacing.lg,
-    borderRadius: BorderRadius.xl,
-  },
-  title: {
-    marginBottom: Spacing.sm,
   },
   subtitle: {
     textAlign: "center",

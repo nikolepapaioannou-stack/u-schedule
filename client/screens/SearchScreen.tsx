@@ -97,7 +97,7 @@ export default function SearchScreen() {
           { paddingTop: headerHeight + Spacing.xl, paddingBottom: tabBarHeight + Spacing.xl },
         ]}
       >
-        <HeaderTitle title="ExamScheduler" subtitle="Αναζήτηση Διαθέσιμων Θέσεων" />
+        <HeaderTitle showLogo subtitle="Αναζήτηση Διαθέσιμων Θέσεων" />
 
         <Card variant="glass" style={styles.infoCard}>
           <View style={styles.infoRow}>

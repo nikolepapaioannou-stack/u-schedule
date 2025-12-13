@@ -6,27 +6,29 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing } from "@/constants/theme";
 
 interface HeaderTitleProps {
-  title: string;
+  title?: string;
   subtitle?: string;
+  showLogo?: boolean;
 }
 
-export function HeaderTitle({ title, subtitle }: HeaderTitleProps) {
+export function HeaderTitle({ title, subtitle, showLogo = false }: HeaderTitleProps) {
   const { theme } = useTheme();
 
-  if (subtitle) {
+  if (showLogo || subtitle) {
     return (
       <View style={styles.columnContainer}>
         <View style={styles.row}>
           <Image
-            source={require("../../assets/images/icon.png")}
-            style={styles.icon}
+            source={require("../../assets/images/logo.png")}
+            style={styles.logo}
             resizeMode="contain"
           />
-          <ThemedText type="h2" style={styles.title}>{title}</ThemedText>
         </View>
-        <ThemedText type="small" style={[styles.subtitle, { color: theme.textSecondary }]}>
-          {subtitle}
-        </ThemedText>
+        {subtitle ? (
+          <ThemedText type="small" style={[styles.subtitle, { color: theme.textSecondary }]}>
+            {subtitle}
+          </ThemedText>
+        ) : null}
       </View>
     );
   }
@@ -34,11 +36,11 @@ export function HeaderTitle({ title, subtitle }: HeaderTitleProps) {
   return (
     <View style={styles.container}>
       <Image
-        source={require("../../assets/images/icon.png")}
-        style={styles.icon}
+        source={require("../../assets/images/logo.png")}
+        style={styles.logoSmall}
         resizeMode="contain"
       />
-      <ThemedText style={styles.title}>{title}</ThemedText>
+      {title ? <ThemedText style={styles.title}>{title}</ThemedText> : null}
     </View>
   );
 }
@@ -57,14 +59,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  icon: {
-    width: 28,
+  logo: {
+    width: 140,
+    height: 40,
+  },
+  logoSmall: {
+    width: 100,
     height: 28,
-    marginRight: Spacing.sm,
   },
   title: {
     fontSize: 17,
     fontWeight: "600",
+    marginLeft: Spacing.sm,
   },
   subtitle: {
     marginTop: Spacing.xs,
