@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, Text, Image } from "react-native";
+import { View, StyleSheet, Text, Image, Platform } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { Colors, Spacing } from "@/constants/theme";
 
@@ -15,12 +15,18 @@ export function LogoBrand({
   subtitle = "Σύστημα Προγραμματισμού Εξετάσεων"
 }: LogoBrandProps) {
   const sizes = {
-    small: { iconSize: 28, textSize: 18, gap: 6 },
-    medium: { iconSize: 40, textSize: 26, gap: 8 },
-    large: { iconSize: 56, textSize: 36, gap: 10 },
+    small: { iconSize: 28, textSize: 16, gap: 4 },
+    medium: { iconSize: 42, textSize: 24, gap: 6 },
+    large: { iconSize: 60, textSize: 34, gap: 8 },
   };
 
   const { iconSize, textSize, gap } = sizes[size];
+
+  const serifFont = Platform.select({
+    ios: "Times New Roman",
+    android: "serif",
+    web: "'Times New Roman', Georgia, serif",
+  });
 
   return (
     <View style={styles.container}>
@@ -35,6 +41,7 @@ export function LogoBrand({
           { 
             fontSize: textSize,
             marginLeft: gap,
+            fontFamily: serifFont,
           }
         ]}>
           SCHEDULE
@@ -60,7 +67,7 @@ const styles = StyleSheet.create({
   scheduleText: {
     fontWeight: "400",
     color: "#6B7B8C",
-    letterSpacing: 3,
+    letterSpacing: 2,
     textTransform: "uppercase",
   },
   subtitle: {
