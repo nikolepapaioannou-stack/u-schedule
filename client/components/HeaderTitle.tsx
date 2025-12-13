@@ -1,7 +1,8 @@
 import React from "react";
-import { View, StyleSheet, Image } from "react-native";
+import { View, StyleSheet } from "react-native";
 
 import { ThemedText } from "@/components/ThemedText";
+import { LogoBrand } from "@/components/LogoBrand";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing } from "@/constants/theme";
 
@@ -17,13 +18,7 @@ export function HeaderTitle({ title, subtitle, showLogo = false }: HeaderTitlePr
   if (showLogo || subtitle) {
     return (
       <View style={styles.columnContainer}>
-        <View style={styles.row}>
-          <Image
-            source={require("../../assets/images/logo.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </View>
+        <LogoBrand size="small" />
         {subtitle ? (
           <ThemedText type="small" style={[styles.subtitle, { color: theme.textSecondary }]}>
             {subtitle}
@@ -35,11 +30,7 @@ export function HeaderTitle({ title, subtitle, showLogo = false }: HeaderTitlePr
 
   return (
     <View style={styles.container}>
-      <Image
-        source={require("../../assets/images/logo.png")}
-        style={styles.logoSmall}
-        resizeMode="contain"
-      />
+      <LogoBrand size="small" />
       {title ? <ThemedText style={styles.title}>{title}</ThemedText> : null}
     </View>
   );
@@ -54,18 +45,6 @@ const styles = StyleSheet.create({
   columnContainer: {
     alignItems: "flex-start",
     marginBottom: Spacing.lg,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  logo: {
-    width: 140,
-    height: 40,
-  },
-  logoSmall: {
-    width: 100,
-    height: 28,
   },
   title: {
     fontSize: 17,

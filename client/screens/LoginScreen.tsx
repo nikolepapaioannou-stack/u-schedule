@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Pressable, Platform, Alert, Image } from "react-native";
+import { StyleSheet, View, Pressable, Platform, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
@@ -12,6 +12,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { Button } from "@/components/Button";
 import { TextInput } from "@/components/TextInput";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { LogoBrand } from "@/components/LogoBrand";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, GradientColors } from "@/constants/theme";
@@ -111,14 +112,7 @@ export default function LoginScreen() {
         ]}
       >
         <View style={styles.logoContainer}>
-          <Image
-            source={require("../../assets/images/logo.png")}
-            style={styles.appLogo}
-            resizeMode="contain"
-          />
-          <ThemedText type="h2" style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Σύστημα Προγραμματισμού Εξετάσεων
-          </ThemedText>
+          <LogoBrand size="large" showSubtitle subtitle="Σύστημα Προγραμματισμού Εξετάσεων" />
         </View>
 
         <View style={styles.formContainer}>
@@ -198,14 +192,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: Spacing["3xl"],
     marginBottom: Spacing["2xl"],
-  },
-  appLogo: {
-    width: 200,
-    height: 80,
-    marginBottom: Spacing.lg,
-  },
-  subtitle: {
-    textAlign: "center",
   },
   formContainer: {
     gap: Spacing.lg,

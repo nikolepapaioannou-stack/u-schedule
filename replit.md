@@ -1,8 +1,8 @@
-# Exam Scheduler
+# U-Schedule
 
 ## Overview
 
-An exam scheduling system built with Expo (React Native) for cross-platform mobile and web support, with an Express.js backend. The application allows university departments to book exam slots, with role-based access separating regular users (who search and book slots) from administrators (who approve bookings and manage the calendar).
+An exam scheduling system built with Expo (React Native) for cross-platform mobile and web support, with an Express.js backend. Branded as **U-SCHEDULE** (with "U" in navy blue and "SCHEDULE" in silver/gray, similar to U-CERT style). The application allows university departments to book exam slots, with role-based access separating regular users (who search and book slots) from administrators (who approve bookings and manage the calendar).
 
 The system enforces a 6-working-day booking rule, supports slot holding with countdown timers, and provides shift-based scheduling (morning, midday, afternoon).
 
