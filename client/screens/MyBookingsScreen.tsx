@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { StyleSheet, View, FlatList, RefreshControl, Pressable } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -16,6 +16,8 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+type FilterTab = "active" | "history";
 
 interface Booking {
   id: string;
@@ -35,6 +37,7 @@ const STATUS_CONFIG = {
   approved: { label: "Εγκρίθηκε", color: "statusApproved", icon: "check-circle" },
   rejected: { label: "Απορρίφθηκε", color: "statusRejected", icon: "x-circle" },
   expired: { label: "Έληξε", color: "statusCompleted", icon: "clock" },
+  completed: { label: "Ολοκληρώθηκε", color: "statusCompleted", icon: "check" },
 } as const;
 
 const SHIFT_LABELS = {
@@ -42,6 +45,9 @@ const SHIFT_LABELS = {
   midday: "Μεσημέρι",
   afternoon: "Απόγευμα",
 };
+
+const ACTIVE_STATUSES = ["holding", "pending", "approved"];
+const HISTORY_STATUSES = ["rejected", "expired", "completed"];
 
 export default function MyBookingsScreen() {
   const { theme } = useTheme();
@@ -53,6 +59,7 @@ export default function MyBookingsScreen() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<FilterTab>("active");
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -76,6 +83,23 @@ export default function MyBookingsScreen() {
     setIsRefreshing(true);
     fetchBookings();
   };
+
+  const filteredBookings = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return bookings.filter((booking) => {
+      const bookingDate = new Date(booking.bookingDate);
+      bookingDate.setHours(0, 0, 0, 0);
+      const isPastDate = bookingDate < today;
+      
+      if (activeTab === "active") {
+        return ACTIVE_STATUSES.includes(booking.status) && !isPastDate;
+      } else {
+        return HISTORY_STATUSES.includes(booking.status) || isPastDate;
+      }
+    });
+  }, [bookings, activeTab]);
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("el-GR", {
@@ -145,33 +169,94 @@ export default function MyBookingsScreen() {
     );
   };
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <View style={[styles.emptyIcon, { backgroundColor: theme.backgroundSecondary }]}>
-        <Feather name="calendar" size={48} color={theme.textSecondary} />
+  const renderEmptyState = () => {
+    const isHistoryTab = activeTab === "history";
+    return (
+      <View style={styles.emptyState}>
+        <View style={[styles.emptyIcon, { backgroundColor: theme.backgroundSecondary }]}>
+          <Feather name={isHistoryTab ? "archive" : "calendar"} size={48} color={theme.textSecondary} />
+        </View>
+        <ThemedText type="h3" style={{ marginTop: Spacing.xl, textAlign: "center" }}>
+          {isHistoryTab ? "Δεν υπάρχει ιστορικό" : "Δεν υπάρχουν ενεργές κρατήσεις"}
+        </ThemedText>
+        <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", marginTop: Spacing.sm }}>
+          {isHistoryTab 
+            ? "Οι ολοκληρωμένες και παρελθούσες κρατήσεις σας θα εμφανίζονται εδώ" 
+            : "Αναζητήστε διαθέσιμες θέσεις για να κάνετε την πρώτη σας κράτηση"}
+        </ThemedText>
       </View>
-      <ThemedText type="h3" style={{ marginTop: Spacing.xl, textAlign: "center" }}>
-        Δεν υπάρχουν κρατήσεις
-      </ThemedText>
-      <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", marginTop: Spacing.sm }}>
-        Αναζητήστε διαθέσιμες θέσεις για να κάνετε την πρώτη σας κράτηση
-      </ThemedText>
+    );
+  };
+
+  const renderTabSelector = () => (
+    <View style={[styles.tabContainer, { backgroundColor: theme.backgroundSecondary }]}>
+      <Pressable
+        style={[
+          styles.tab,
+          activeTab === "active" && { backgroundColor: theme.background },
+        ]}
+        onPress={() => setActiveTab("active")}
+      >
+        <Feather 
+          name="clock" 
+          size={16} 
+          color={activeTab === "active" ? theme.primary : theme.textSecondary} 
+        />
+        <ThemedText 
+          type="body" 
+          style={{ 
+            marginLeft: Spacing.xs, 
+            color: activeTab === "active" ? theme.primary : theme.textSecondary,
+            fontWeight: activeTab === "active" ? "600" : "400",
+          }}
+        >
+          Ενεργές
+        </ThemedText>
+      </Pressable>
+      <Pressable
+        style={[
+          styles.tab,
+          activeTab === "history" && { backgroundColor: theme.background },
+        ]}
+        onPress={() => setActiveTab("history")}
+      >
+        <Feather 
+          name="archive" 
+          size={16} 
+          color={activeTab === "history" ? theme.primary : theme.textSecondary} 
+        />
+        <ThemedText 
+          type="body" 
+          style={{ 
+            marginLeft: Spacing.xs, 
+            color: activeTab === "history" ? theme.primary : theme.textSecondary,
+            fontWeight: activeTab === "history" ? "600" : "400",
+          }}
+        >
+          Ιστορικό
+        </ThemedText>
+      </Pressable>
     </View>
   );
 
   return (
     <ThemedView style={styles.container}>
       <FlatList
-        data={bookings}
+        data={filteredBookings}
         keyExtractor={(item) => item.id}
         renderItem={renderBookingItem}
         contentContainerStyle={[
           styles.listContent,
           { paddingTop: headerHeight + Spacing.xl, paddingBottom: tabBarHeight + Spacing.xl },
-          bookings.length === 0 && styles.emptyListContent,
+          filteredBookings.length === 0 && styles.emptyListContent,
         ]}
-        ListHeaderComponent={<HeaderTitle title="Οι Κρατήσεις Μου" />}
-        ListEmptyComponent={!isLoading ? renderEmptyState : null}
+        ListHeaderComponent={
+          <View>
+            <HeaderTitle title="Οι Κρατήσεις Μου" />
+            {renderTabSelector()}
+          </View>
+        }
+        ListEmptyComponent={!isLoading ? renderEmptyState() : null}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -194,6 +279,20 @@ const styles = StyleSheet.create({
   },
   emptyListContent: {
     flex: 1,
+  },
+  tabContainer: {
+    flexDirection: "row",
+    borderRadius: BorderRadius.md,
+    padding: Spacing.xs,
+    marginBottom: Spacing.lg,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.sm,
   },
   bookingCard: {
     gap: Spacing.md,
