@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, not, or, isNull } from "drizzle-orm";
+import { eq, and, gte, lte, not, or, isNull, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import {
@@ -9,11 +9,17 @@ import {
   type Settings,
   type Booking,
   type InsertBooking,
+  type Notification,
+  type InsertNotification,
+  type Waitlist,
+  type InsertWaitlist,
   users,
   shifts,
   closedDates,
   settings,
   bookings,
+  notifications,
+  waitlist,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -53,6 +59,18 @@ export interface IStorage {
   updateBooking(id: string, booking: Partial<Booking>): Promise<Booking | undefined>;
   deleteBooking(id: string): Promise<void>;
   releaseExpiredHolds(): Promise<number>;
+  
+  getNotificationsByUserId(userId: string): Promise<Notification[]>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationAsRead(id: string, userId: string): Promise<void>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
+  
+  getWaitlistByUserId(userId: string): Promise<Waitlist[]>;
+  getWaitlistForSlot(date: string, shift: string): Promise<Waitlist[]>;
+  createWaitlistEntry(entry: InsertWaitlist & { userId: string }): Promise<Waitlist>;
+  updateWaitlistEntry(id: string, userId: string, data: Partial<Waitlist>): Promise<Waitlist | undefined>;
+  deleteWaitlistEntry(id: string, userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -223,6 +241,71 @@ export class DatabaseStorage implements IStorage {
       )
       .returning();
     return result.length;
+  }
+
+  async getNotificationsByUserId(userId: string): Promise<Notification[]> {
+    return db.select().from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const result = await db.select().from(notifications)
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+    return result.length;
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const result = await db.insert(notifications).values(notification).returning();
+    return result[0];
+  }
+
+  async markNotificationAsRead(id: string, userId: string): Promise<void> {
+    await db.update(notifications).set({ isRead: true }).where(
+      and(eq(notifications.id, id), eq(notifications.userId, userId))
+    );
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.userId, userId));
+  }
+
+  async getWaitlistByUserId(userId: string): Promise<Waitlist[]> {
+    return db.select().from(waitlist)
+      .where(eq(waitlist.userId, userId))
+      .orderBy(waitlist.createdAt);
+  }
+
+  async getWaitlistForSlot(date: string, shift: string): Promise<Waitlist[]> {
+    return db.select().from(waitlist)
+      .where(
+        and(
+          eq(waitlist.preferredDate, date),
+          eq(waitlist.preferredShift, shift),
+          eq(waitlist.status, "waiting")
+        )
+      )
+      .orderBy(waitlist.createdAt);
+  }
+
+  async createWaitlistEntry(entry: InsertWaitlist & { userId: string }): Promise<Waitlist> {
+    const result = await db.insert(waitlist).values(entry).returning();
+    return result[0];
+  }
+
+  async updateWaitlistEntry(id: string, userId: string, data: Partial<Waitlist>): Promise<Waitlist | undefined> {
+    const result = await db.update(waitlist).set(data).where(
+      and(eq(waitlist.id, id), eq(waitlist.userId, userId))
+    ).returning();
+    return result[0];
+  }
+
+  async deleteWaitlistEntry(id: string, userId: string): Promise<void> {
+    await db.delete(waitlist).where(
+      and(eq(waitlist.id, id), eq(waitlist.userId, userId))
+    );
   }
 }
 

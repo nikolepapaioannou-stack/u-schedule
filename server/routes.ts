@@ -545,6 +545,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  app.get("/api/admin/reports", async (req, res) => {
+    const adminId = await requireAdmin(req, res);
+    if (!adminId) return;
+    
+    const allBookings = await storage.getBookings();
+    const shifts = await storage.getShifts();
+    
+    const departmentStats = new Map<string, { total: number; approved: number; rejected: number; pending: number }>();
+    const shiftStats = new Map<string, number>();
+    const monthlyStats = new Map<string, number>();
+    
+    for (const booking of allBookings) {
+      const dept = departmentStats.get(booking.departmentId) || { total: 0, approved: 0, rejected: 0, pending: 0 };
+      dept.total++;
+      if (booking.status === "approved") dept.approved++;
+      else if (booking.status === "rejected") dept.rejected++;
+      else if (booking.status === "pending") dept.pending++;
+      departmentStats.set(booking.departmentId, dept);
+      
+      if (booking.shiftId && booking.status === "approved") {
+        const current = shiftStats.get(booking.shiftId) || 0;
+        shiftStats.set(booking.shiftId, current + 1);
+      }
+      
+      const month = booking.bookingDate.substring(0, 7);
+      const monthCount = monthlyStats.get(month) || 0;
+      monthlyStats.set(month, monthCount + 1);
+    }
+    
+    const shiftStatsWithNames = Array.from(shiftStats.entries()).map(([shiftId, count]) => {
+      const shift = shifts.find(s => s.id === shiftId);
+      return {
+        shiftId,
+        shiftName: shift?.name || "Άγνωστο",
+        startTime: shift?.startTime || "",
+        endTime: shift?.endTime || "",
+        count,
+      };
+    }).sort((a, b) => b.count - a.count);
+    
+    res.json({
+      departmentStats: Array.from(departmentStats.entries()).map(([id, stats]) => ({ departmentId: id, ...stats })),
+      shiftStats: shiftStatsWithNames,
+      monthlyStats: Array.from(monthlyStats.entries()).map(([month, count]) => ({ month, count })).sort((a, b) => a.month.localeCompare(b.month)),
+      totalBookings: allBookings.length,
+      approvedBookings: allBookings.filter(b => b.status === "approved").length,
+      rejectedBookings: allBookings.filter(b => b.status === "rejected").length,
+      pendingBookings: allBookings.filter(b => b.status === "pending").length,
+    });
+  });
+
+  app.get("/api/notifications", async (req, res) => {
+    const userId = await requireAuth(req, res);
+    if (!userId) return;
+    
+    const notificationsList = await storage.getNotificationsByUserId(userId);
+    res.json(notificationsList);
+  });
+
+  app.get("/api/notifications/unread-count", async (req, res) => {
+    const userId = await requireAuth(req, res);
+    if (!userId) return;
+    
+    const count = await storage.getUnreadNotificationCount(userId);
+    res.json({ count });
+  });
+
+  app.put("/api/notifications/:id/read", async (req, res) => {
+    const userId = await requireAuth(req, res);
+    if (!userId) return;
+    
+    const { id } = req.params;
+    await storage.markNotificationAsRead(id, userId);
+    res.json({ success: true });
+  });
+
+  app.put("/api/notifications/read-all", async (req, res) => {
+    const userId = await requireAuth(req, res);
+    if (!userId) return;
+    
+    await storage.markAllNotificationsAsRead(userId);
+    res.json({ success: true });
+  });
+
+  app.get("/api/waitlist", async (req, res) => {
+    const userId = await requireAuth(req, res);
+    if (!userId) return;
+    
+    const entries = await storage.getWaitlistByUserId(userId);
+    res.json(entries);
+  });
+
+  app.post("/api/waitlist", async (req, res) => {
+    const userId = await requireAuth(req, res);
+    if (!userId) return;
+    
+    try {
+      const { departmentId, candidateCount, preferredDate, preferredShift } = req.body;
+      
+      if (!departmentId || !candidateCount || !preferredDate || !preferredShift) {
+        return res.status(400).json({ error: "Λείπουν απαραίτητα πεδία" });
+      }
+      
+      const entry = await storage.createWaitlistEntry({
+        userId,
+        departmentId,
+        candidateCount,
+        preferredDate,
+        preferredShift,
+      });
+      
+      res.status(201).json(entry);
+    } catch (error) {
+      console.error("Error creating waitlist entry:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την εγγραφή στη λίστα αναμονής" });
+    }
+  });
+
+  app.delete("/api/waitlist/:id", async (req, res) => {
+    const userId = await requireAuth(req, res);
+    if (!userId) return;
+    
+    const { id } = req.params;
+    await storage.deleteWaitlistEntry(id, userId);
+    res.json({ success: true });
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

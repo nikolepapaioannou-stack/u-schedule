@@ -7,11 +7,13 @@ import { useTheme } from "@/hooks/useTheme";
 
 import SearchScreen from "@/screens/SearchScreen";
 import MyBookingsScreen from "@/screens/MyBookingsScreen";
+import NotificationsScreen from "@/screens/NotificationsScreen";
 import ProfileScreen from "@/screens/ProfileScreen";
 
 export type UserTabParamList = {
   Search: undefined;
   MyBookings: undefined;
+  Notifications: undefined;
   Profile: undefined;
 };
 
@@ -63,6 +65,16 @@ export default function UserTabNavigator() {
           title: "Κρατήσεις",
           tabBarIcon: ({ color, size }) => (
             <Feather name="calendar" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{
+          title: "Ειδοποιήσεις",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="bell" size={size} color={color} />
           ),
         }}
       />
