@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import * as LocalAuthentication from "expo-local-authentication";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -142,8 +142,8 @@ export default function LoginScreen() {
             placeholder="Εισάγετε τον κωδικό σας"
             secureTextEntry={!showPassword}
             rightIcon={
-              <Pressable onPress={() => setShowPassword(!showPassword)}>
-                <Feather name={showPassword ? "eye-off" : "eye"} size={20} color={theme.textSecondary} />
+              <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={24} color={theme.textSecondary} />
               </Pressable>
             }
           />
