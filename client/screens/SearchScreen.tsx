@@ -99,7 +99,7 @@ export default function SearchScreen() {
       >
         <HeaderTitle title="ExamScheduler" subtitle="Αναζήτηση Διαθέσιμων Θέσεων" />
 
-        <Card elevation={1} style={styles.infoCard}>
+        <Card variant="glass" style={styles.infoCard}>
           <View style={styles.infoRow}>
             <Feather name="info" size={20} color={theme.primary} />
             <ThemedText type="small" style={{ flex: 1, marginLeft: Spacing.md, color: theme.textSecondary }}>

@@ -14,7 +14,7 @@ import { TextInput } from "@/components/TextInput";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, GradientColors } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, "Login">;
@@ -40,14 +40,21 @@ export default function LoginScreen() {
   }, []);
 
   async function checkBiometricAvailability() {
-    if (Platform.OS === "web") return;
+    if (Platform.OS === "web") {
+      setBiometricAvailable(false);
+      return;
+    }
     
-    const compatible = await LocalAuthentication.hasHardwareAsync();
-    const enrolled = await LocalAuthentication.isEnrolledAsync();
-    setBiometricAvailable(compatible && enrolled);
-    
-    const storedEmail = await AsyncStorage.getItem(BIOMETRIC_EMAIL_KEY);
-    setSavedEmail(storedEmail);
+    try {
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      setBiometricAvailable(compatible && enrolled);
+      
+      const storedEmail = await AsyncStorage.getItem(BIOMETRIC_EMAIL_KEY);
+      setSavedEmail(storedEmail);
+    } catch (err) {
+      setBiometricAvailable(false);
+    }
   }
 
   async function handleLogin() {
@@ -70,6 +77,8 @@ export default function LoginScreen() {
   }
 
   async function handleBiometricLogin() {
+    if (Platform.OS === "web") return;
+    
     if (!savedEmail) {
       setError("Συνδεθείτε πρώτα με email για να ενεργοποιήσετε το δαχτυλικό αποτύπωμα");
       return;
@@ -102,9 +111,11 @@ export default function LoginScreen() {
         ]}
       >
         <View style={styles.logoContainer}>
-          <View style={[styles.iconCircle, { backgroundColor: theme.primary }]}>
-            <Feather name="calendar" size={48} color="#FFFFFF" />
-          </View>
+          <Image
+            source={require("../../assets/images/icon.png")}
+            style={styles.appIcon}
+            resizeMode="contain"
+          />
           <ThemedText type="hero" style={styles.title}>ExamScheduler</ThemedText>
           <ThemedText type="body" style={[styles.subtitle, { color: theme.textSecondary }]}>
             Σύστημα Προγραμματισμού Εξετάσεων
@@ -189,13 +200,11 @@ const styles = StyleSheet.create({
     marginTop: Spacing["3xl"],
     marginBottom: Spacing["2xl"],
   },
-  iconCircle: {
+  appIcon: {
     width: 96,
     height: 96,
-    borderRadius: 48,
-    justifyContent: "center",
-    alignItems: "center",
     marginBottom: Spacing.lg,
+    borderRadius: BorderRadius.xl,
   },
   title: {
     marginBottom: Spacing.sm,
