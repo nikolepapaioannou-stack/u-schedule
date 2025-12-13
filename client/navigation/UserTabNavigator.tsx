@@ -3,25 +3,28 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet } from "react-native";
-import HomeStackNavigator from "@/navigation/HomeStackNavigator";
-import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
 
-export type MainTabParamList = {
-  HomeTab: undefined;
-  ProfileTab: undefined;
+import SearchScreen from "@/screens/SearchScreen";
+import MyBookingsScreen from "@/screens/MyBookingsScreen";
+import ProfileScreen from "@/screens/ProfileScreen";
+
+export type UserTabParamList = {
+  Search: undefined;
+  MyBookings: undefined;
+  Profile: undefined;
 };
 
-const Tab = createBottomTabNavigator<MainTabParamList>();
+const Tab = createBottomTabNavigator<UserTabParamList>();
 
-export default function MainTabNavigator() {
+export default function UserTabNavigator() {
   const { theme, isDark } = useTheme();
 
   return (
     <Tab.Navigator
-      initialRouteName="HomeTab"
+      initialRouteName="Search"
       screenOptions={{
-        tabBarActiveTintColor: theme.tabIconSelected,
+        tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.tabIconDefault,
         tabBarStyle: {
           position: "absolute",
@@ -44,20 +47,30 @@ export default function MainTabNavigator() {
       }}
     >
       <Tab.Screen
-        name="HomeTab"
-        component={HomeStackNavigator}
+        name="Search"
+        component={SearchScreen}
         options={{
-          title: "Home",
+          title: "Αναζήτηση",
           tabBarIcon: ({ color, size }) => (
-            <Feather name="home" size={size} color={color} />
+            <Feather name="search" size={size} color={color} />
           ),
         }}
       />
       <Tab.Screen
-        name="ProfileTab"
-        component={ProfileStackNavigator}
+        name="MyBookings"
+        component={MyBookingsScreen}
         options={{
-          title: "Profile",
+          title: "Κρατήσεις",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="calendar" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          title: "Προφίλ",
           tabBarIcon: ({ color, size }) => (
             <Feather name="user" size={size} color={color} />
           ),

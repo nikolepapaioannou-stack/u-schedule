@@ -1,38 +1,255 @@
-import { type User, type InsertUser } from "@shared/schema";
+import { eq, and, gte, lte, not, or, isNull } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
+import {
+  type User,
+  type InsertUser,
+  type Shift,
+  type ClosedDate,
+  type Settings,
+  type Booking,
+  type InsertBooking,
+  users,
+  shifts,
+  closedDates,
+  settings,
+  bookings,
+} from "@shared/schema";
 import { randomUUID } from "crypto";
 
-// modify the interface with any CRUD methods
-// you might need
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+export const db = drizzle(pool);
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByUgrId(ugrId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserBiometric(userId: string, enabled: boolean): Promise<void>;
+  
+  getShifts(): Promise<Shift[]>;
+  getShift(id: string): Promise<Shift | undefined>;
+  createShift(shift: Omit<Shift, "id" | "isActive">): Promise<Shift>;
+  updateShift(id: string, shift: Partial<Shift>): Promise<Shift | undefined>;
+  
+  getClosedDates(): Promise<ClosedDate[]>;
+  getClosedDatesInRange(startDate: string, endDate: string): Promise<ClosedDate[]>;
+  createClosedDate(closedDate: { date: string; reason?: string; createdBy?: string }): Promise<ClosedDate>;
+  deleteClosedDate(id: string): Promise<void>;
+  
+  getSettings(): Promise<Settings>;
+  updateSettings(settingsData: Partial<Settings>): Promise<Settings>;
+  
+  getBookings(): Promise<Booking[]>;
+  getBookingsByUserId(userId: string): Promise<Booking[]>;
+  getBookingByDepartmentId(departmentId: string): Promise<Booking | undefined>;
+  getBookingsByDate(date: string): Promise<Booking[]>;
+  getBookingsByDateAndShift(date: string, shiftId: string): Promise<Booking[]>;
+  getPendingBookings(): Promise<Booking[]>;
+  createBooking(booking: InsertBooking & { userId: string }): Promise<Booking>;
+  updateBooking(id: string, booking: Partial<Booking>): Promise<Booking | undefined>;
+  deleteBooking(id: string): Promise<void>;
+  releaseExpiredHolds(): Promise<number>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
-  }
-
+export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const result = await db.select().from(users).where(eq(users.id, id));
+    return result[0];
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
+    return result[0];
+  }
+
+  async getUserByUgrId(ugrId: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.ugrId, ugrId));
+    return result[0];
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+    const result = await db.insert(users).values({
+      ...insertUser,
+      email: insertUser.email.toLowerCase(),
+    }).returning();
+    return result[0];
+  }
+
+  async updateUserBiometric(userId: string, enabled: boolean): Promise<void> {
+    await db.update(users).set({ biometricEnabled: enabled }).where(eq(users.id, userId));
+  }
+
+  async getShifts(): Promise<Shift[]> {
+    return db.select().from(shifts).where(eq(shifts.isActive, true));
+  }
+
+  async getShift(id: string): Promise<Shift | undefined> {
+    const result = await db.select().from(shifts).where(eq(shifts.id, id));
+    return result[0];
+  }
+
+  async createShift(shift: Omit<Shift, "id" | "isActive">): Promise<Shift> {
+    const result = await db.insert(shifts).values(shift).returning();
+    return result[0];
+  }
+
+  async updateShift(id: string, shift: Partial<Shift>): Promise<Shift | undefined> {
+    const result = await db.update(shifts).set(shift).where(eq(shifts.id, id)).returning();
+    return result[0];
+  }
+
+  async getClosedDates(): Promise<ClosedDate[]> {
+    return db.select().from(closedDates);
+  }
+
+  async getClosedDatesInRange(startDate: string, endDate: string): Promise<ClosedDate[]> {
+    return db.select().from(closedDates).where(
+      and(
+        gte(closedDates.date, startDate),
+        lte(closedDates.date, endDate)
+      )
+    );
+  }
+
+  async createClosedDate(closedDate: { date: string; reason?: string; createdBy?: string }): Promise<ClosedDate> {
+    const result = await db.insert(closedDates).values(closedDate).returning();
+    return result[0];
+  }
+
+  async deleteClosedDate(id: string): Promise<void> {
+    await db.delete(closedDates).where(eq(closedDates.id, id));
+  }
+
+  async getSettings(): Promise<Settings> {
+    const result = await db.select().from(settings);
+    if (result.length === 0) {
+      const newSettings = await db.insert(settings).values({}).returning();
+      return newSettings[0];
+    }
+    return result[0];
+  }
+
+  async updateSettings(settingsData: Partial<Settings>): Promise<Settings> {
+    const current = await this.getSettings();
+    const result = await db.update(settings)
+      .set({ ...settingsData, updatedAt: new Date() })
+      .where(eq(settings.id, current.id))
+      .returning();
+    return result[0];
+  }
+
+  async getBookings(): Promise<Booking[]> {
+    return db.select().from(bookings);
+  }
+
+  async getBookingsByUserId(userId: string): Promise<Booking[]> {
+    return db.select().from(bookings).where(eq(bookings.userId, userId));
+  }
+
+  async getBookingByDepartmentId(departmentId: string): Promise<Booking | undefined> {
+    const result = await db.select().from(bookings).where(
+      and(
+        eq(bookings.departmentId, departmentId),
+        not(eq(bookings.status, "rejected")),
+        not(eq(bookings.status, "expired"))
+      )
+    );
+    return result[0];
+  }
+
+  async getBookingsByDate(date: string): Promise<Booking[]> {
+    return db.select().from(bookings).where(
+      and(
+        eq(bookings.bookingDate, date),
+        not(eq(bookings.status, "rejected")),
+        not(eq(bookings.status, "expired"))
+      )
+    );
+  }
+
+  async getBookingsByDateAndShift(date: string, shiftId: string): Promise<Booking[]> {
+    return db.select().from(bookings).where(
+      and(
+        eq(bookings.bookingDate, date),
+        eq(bookings.shiftId, shiftId),
+        not(eq(bookings.status, "rejected")),
+        not(eq(bookings.status, "expired"))
+      )
+    );
+  }
+
+  async getPendingBookings(): Promise<Booking[]> {
+    return db.select().from(bookings).where(eq(bookings.status, "pending"));
+  }
+
+  async createBooking(booking: InsertBooking & { userId: string }): Promise<Booking> {
+    const confirmationNumber = `EX${Date.now().toString(36).toUpperCase()}${randomUUID().slice(0, 4).toUpperCase()}`;
+    const holdExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    
+    const result = await db.insert(bookings).values({
+      ...booking,
+      status: "holding",
+      holdExpiresAt,
+      confirmationNumber,
+    }).returning();
+    return result[0];
+  }
+
+  async updateBooking(id: string, booking: Partial<Booking>): Promise<Booking | undefined> {
+    const result = await db.update(bookings)
+      .set({ ...booking, updatedAt: new Date() })
+      .where(eq(bookings.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteBooking(id: string): Promise<void> {
+    await db.delete(bookings).where(eq(bookings.id, id));
+  }
+
+  async releaseExpiredHolds(): Promise<number> {
+    const now = new Date();
+    const result = await db.update(bookings)
+      .set({ status: "expired", updatedAt: now })
+      .where(
+        and(
+          eq(bookings.status, "holding"),
+          lte(bookings.holdExpiresAt, now)
+        )
+      )
+      .returning();
+    return result.length;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
+
+export async function initializeDefaultData() {
+  const existingShifts = await storage.getShifts();
+  if (existingShifts.length === 0) {
+    await storage.createShift({
+      name: "morning",
+      startTime: "08:00",
+      endTime: "12:00",
+      maxCandidates: 30,
+    });
+    await storage.createShift({
+      name: "midday",
+      startTime: "12:00",
+      endTime: "16:00",
+      maxCandidates: 30,
+    });
+    await storage.createShift({
+      name: "afternoon",
+      startTime: "16:00",
+      endTime: "19:00",
+      maxCandidates: 30,
+    });
+  }
+  
+  await storage.getSettings();
+}
