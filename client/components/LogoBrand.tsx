@@ -15,9 +15,9 @@ export function LogoBrand({
   subtitle = "Σύστημα Προγραμματισμού Εξετάσεων"
 }: LogoBrandProps) {
   const sizes = {
-    small: { iconSize: 28, textSize: 16, gap: 4 },
-    medium: { iconSize: 42, textSize: 24, gap: 6 },
-    large: { iconSize: 60, textSize: 34, gap: 8 },
+    small: { iconSize: 28, textSize: 16, gap: -4 },
+    medium: { iconSize: 42, textSize: 24, gap: -6 },
+    large: { iconSize: 60, textSize: 34, gap: -8 },
   };
 
   const { iconSize, textSize, gap } = sizes[size];
