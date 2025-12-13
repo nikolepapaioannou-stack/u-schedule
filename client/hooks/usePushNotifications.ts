@@ -1,0 +1,65 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Platform } from "react-native";
+import * as Notifications from "expo-notifications";
+import {
+  registerPushToken,
+  addNotificationReceivedListener,
+  addNotificationResponseReceivedListener,
+} from "@/lib/notifications";
+import { useAuth } from "@/lib/auth";
+
+export function usePushNotifications() {
+  const { user, token } = useAuth();
+  const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
+  const [notification, setNotification] = useState<Notifications.Notification | null>(null);
+  const [isRegistered, setIsRegistered] = useState(false);
+  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
+
+  const registerForNotifications = useCallback(async () => {
+    if (!token || Platform.OS === "web") {
+      return;
+    }
+
+    try {
+      const result = await registerPushToken(token);
+      setIsRegistered(result.success);
+      setExpoPushToken(result.token);
+    } catch (error) {
+      console.error("Failed to register for push notifications:", error);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (user && token) {
+      registerForNotifications();
+    }
+  }, [user, token, registerForNotifications]);
+
+  useEffect(() => {
+    notificationListener.current = addNotificationReceivedListener((notification) => {
+      setNotification(notification);
+    });
+
+    responseListener.current = addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      console.log("Notification response:", data);
+    });
+
+    return () => {
+      if (notificationListener.current) {
+        notificationListener.current.remove();
+      }
+      if (responseListener.current) {
+        responseListener.current.remove();
+      }
+    };
+  }, []);
+
+  return {
+    expoPushToken,
+    notification,
+    isRegistered,
+    registerForNotifications,
+  };
+}

@@ -13,6 +13,7 @@ import {
   type InsertNotification,
   type Waitlist,
   type InsertWaitlist,
+  type PushToken,
   users,
   shifts,
   closedDates,
@@ -20,6 +21,7 @@ import {
   bookings,
   notifications,
   waitlist,
+  pushTokens,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -71,6 +73,11 @@ export interface IStorage {
   createWaitlistEntry(entry: InsertWaitlist & { userId: string }): Promise<Waitlist>;
   updateWaitlistEntry(id: string, userId: string, data: Partial<Waitlist>): Promise<Waitlist | undefined>;
   deleteWaitlistEntry(id: string, userId: string): Promise<void>;
+  
+  getPushTokensByUserId(userId: string): Promise<PushToken[]>;
+  getAllPushTokens(): Promise<PushToken[]>;
+  savePushToken(userId: string, token: string, platform?: string): Promise<PushToken>;
+  deletePushToken(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -306,6 +313,37 @@ export class DatabaseStorage implements IStorage {
     await db.delete(waitlist).where(
       and(eq(waitlist.id, id), eq(waitlist.userId, userId))
     );
+  }
+
+  async getPushTokensByUserId(userId: string): Promise<PushToken[]> {
+    return db.select().from(pushTokens).where(eq(pushTokens.userId, userId));
+  }
+
+  async getAllPushTokens(): Promise<PushToken[]> {
+    return db.select().from(pushTokens);
+  }
+
+  async savePushToken(userId: string, token: string, platform?: string): Promise<PushToken> {
+    const existing = await db.select().from(pushTokens).where(eq(pushTokens.token, token));
+    
+    if (existing.length > 0) {
+      const result = await db.update(pushTokens)
+        .set({ userId, platform, updatedAt: new Date() })
+        .where(eq(pushTokens.token, token))
+        .returning();
+      return result[0];
+    }
+    
+    const result = await db.insert(pushTokens).values({
+      userId,
+      token,
+      platform,
+    }).returning();
+    return result[0];
+  }
+
+  async deletePushToken(userId: string): Promise<void> {
+    await db.delete(pushTokens).where(eq(pushTokens.userId, userId));
   }
 }
 

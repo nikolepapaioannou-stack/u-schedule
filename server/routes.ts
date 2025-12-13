@@ -672,6 +672,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true });
   });
 
+  app.post("/api/push-token", async (req, res) => {
+    const userId = await requireAuth(req, res);
+    if (!userId) return;
+    
+    try {
+      const { pushToken, platform } = req.body;
+      
+      if (!pushToken) {
+        return res.status(400).json({ error: "Λείπει το push token" });
+      }
+      
+      const token = await storage.savePushToken(userId, pushToken, platform);
+      res.status(201).json(token);
+    } catch (error) {
+      console.error("Error saving push token:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την αποθήκευση του push token" });
+    }
+  });
+
+  app.delete("/api/push-token", async (req, res) => {
+    const userId = await requireAuth(req, res);
+    if (!userId) return;
+    
+    try {
+      await storage.deletePushToken(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting push token:", error);
+      res.status(500).json({ error: "Σφάλμα κατά τη διαγραφή του push token" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -12,6 +12,7 @@ import { queryClient } from "@/lib/query-client";
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/lib/auth";
+import { PushNotificationHandler } from "@/components/PushNotificationHandler";
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
             <GestureHandlerRootView style={styles.root}>
               <KeyboardProvider>
                 <NavigationContainer>
+                  <PushNotificationHandler />
                   <RootStackNavigator />
                 </NavigationContainer>
                 <StatusBar style="auto" />
