@@ -41,6 +41,7 @@ export function LogoBrand({
           { 
             fontSize: textSize,
             marginLeft: gap,
+            marginTop: textSize * 0.3,
             fontFamily: serifFont,
           }
         ]}>
