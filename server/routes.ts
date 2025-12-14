@@ -905,77 +905,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as unknown[][];
       
-      if (rows.length < 2) {
-        return res.status(400).json({ error: "Το αρχείο πρέπει να έχει τουλάχιστον μία γραμμή δεδομένων" });
+      if (rows.length < 3) {
+        return res.status(400).json({ error: "Το αρχείο πρέπει να έχει τουλάχιστον 2 γραμμές επικεφαλίδων και δεδομένα επιτηρητών" });
       }
       
-      const headerRow = rows[0] as string[];
-      const dateColIndex = headerRow.findIndex(h => 
-        typeof h === "string" && (h.toLowerCase().includes("ημερομηνία") || h.toLowerCase().includes("date"))
-      );
-      const shiftColIndex = headerRow.findIndex(h => 
-        typeof h === "string" && (h.toLowerCase().includes("βάρδια") || h.toLowerCase().includes("shift"))
-      );
-      const proctorColIndex = headerRow.findIndex(h => 
-        typeof h === "string" && (h.toLowerCase().includes("επιτηρητ") || h.toLowerCase().includes("proctor") || h.toLowerCase().includes("αριθμός"))
-      );
+      const headerRow = rows[0] as (string | null)[];
+      const dateRow = rows[1] as (string | number | null)[];
       
-      if (dateColIndex === -1 || shiftColIndex === -1 || proctorColIndex === -1) {
+      if (!headerRow[0] || (typeof headerRow[0] === "string" && !headerRow[0].toLowerCase().includes("proctor"))) {
         return res.status(400).json({ 
-          error: "Δεν βρέθηκαν οι απαραίτητες στήλες. Χρειάζονται στήλες: Ημερομηνία, Βάρδια, Αριθμός Επιτηρητών",
-          foundHeaders: headerRow,
+          error: "Μη αναγνωρίσιμη μορφή Excel. Η πρώτη στήλη πρέπει να είναι 'PROCTOR'",
+          foundHeader: headerRow[0],
         });
       }
       
-      const parsedData: Array<{ date: string; shift: string; proctorCount: number }> = [];
+      const parseTimeToMinutes = (timeStr: string): number => {
+        const parts = timeStr.split(":");
+        return parseInt(parts[0], 10) * 60 + parseInt(parts[1] || "0", 10);
+      };
       
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        if (!row || row.length === 0) continue;
+      const parseWorkHours = (cell: unknown): { start: number; end: number } | null => {
+        if (!cell || typeof cell !== "string") return null;
+        const match = cell.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+        if (!match) return null;
+        return {
+          start: parseTimeToMinutes(match[1]),
+          end: parseTimeToMinutes(match[2]),
+        };
+      };
+      
+      const canCoverShift = (proctorStart: number, proctorEnd: number, shiftStartTime: string, shiftEndTime: string): boolean => {
+        const shiftStart = parseTimeToMinutes(shiftStartTime);
+        const shiftEnd = parseTimeToMinutes(shiftEndTime);
+        const proctorLastExamStart = proctorEnd - 60;
+        const shiftLastExamStart = shiftEnd - 60;
+        const proctorAvailableFrom = proctorStart;
+        const proctorAvailableTo = proctorLastExamStart;
+        const shiftExamFrom = shiftStart;
+        const shiftExamTo = shiftLastExamStart;
+        return proctorAvailableFrom <= shiftExamTo && proctorAvailableTo >= shiftExamFrom;
+      };
+      
+      const dates: { colIndex: number; dateStr: string }[] = [];
+      const currentYear = new Date().getFullYear();
+      
+      for (let col = 1; col < dateRow.length; col++) {
+        const dateValue = dateRow[col];
+        let dateStr: string | null = null;
         
-        let dateValue = row[dateColIndex];
-        let dateStr: string;
-        
-        if (dateValue instanceof Date) {
-          dateStr = dateValue.toISOString().split("T")[0];
-        } else if (typeof dateValue === "number") {
+        if (typeof dateValue === "number") {
           const excelDate = XLSX.SSF.parse_date_code(dateValue);
           dateStr = `${excelDate.y}-${String(excelDate.m).padStart(2, "0")}-${String(excelDate.d).padStart(2, "0")}`;
         } else if (typeof dateValue === "string" && dateValue.trim()) {
           const parts = dateValue.split(/[\/\-\.]/);
-          if (parts.length === 3) {
-            if (parts[0].length === 4) {
-              dateStr = `${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`;
-            } else {
+          if (parts.length === 2) {
+            const day = parts[0].padStart(2, "0");
+            const month = parts[1].padStart(2, "0");
+            const year = parseInt(month, 10) >= new Date().getMonth() + 1 ? currentYear : currentYear + 1;
+            dateStr = `${year}-${month}-${day}`;
+          } else if (parts.length === 3) {
+            if (parts[2].length === 4) {
               dateStr = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+            } else {
+              const year = parseInt(parts[2], 10) < 100 ? 2000 + parseInt(parts[2], 10) : parseInt(parts[2], 10);
+              dateStr = `${year}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
             }
-          } else {
-            continue;
           }
-        } else {
-          continue;
         }
         
-        const shiftValue = row[shiftColIndex];
-        const shift = typeof shiftValue === "string" ? shiftValue.trim() : String(shiftValue || "");
-        
-        const proctorValue = row[proctorColIndex];
-        const proctorCount = typeof proctorValue === "number" ? proctorValue : parseInt(String(proctorValue || "0"), 10);
-        
-        if (dateStr && shift && !isNaN(proctorCount)) {
-          parsedData.push({ date: dateStr, shift, proctorCount });
+        if (dateStr) {
+          dates.push({ colIndex: col, dateStr });
         }
       }
       
-      if (parsedData.length === 0) {
-        return res.status(400).json({ error: "Δεν βρέθηκαν έγκυρα δεδομένα στο αρχείο Excel" });
+      if (dates.length === 0) {
+        return res.status(400).json({ error: "Δεν βρέθηκαν έγκυρες ημερομηνίες στη δεύτερη γραμμή" });
       }
       
-      const appSettings = await storage.getSettings();
       const shifts = await storage.getShifts();
-      const shiftMap = new Map(shifts.map(s => [s.name.toLowerCase(), s.id]));
+      const appSettings = await storage.getSettings();
       
-      const validationErrors: Array<{ row: number; error: string }> = [];
+      const shiftCounts: Map<string, Map<string, number>> = new Map();
+      
+      for (const { dateStr } of dates) {
+        const dateShifts = new Map<string, number>();
+        for (const shift of shifts) {
+          dateShifts.set(shift.id, 0);
+        }
+        shiftCounts.set(dateStr, dateShifts);
+      }
+      
+      for (let rowIdx = 2; rowIdx < rows.length; rowIdx++) {
+        const row = rows[rowIdx];
+        if (!row || !row[0]) continue;
+        
+        for (const { colIndex, dateStr } of dates) {
+          const workHours = parseWorkHours(row[colIndex]);
+          if (!workHours) continue;
+          
+          const dateShifts = shiftCounts.get(dateStr);
+          if (!dateShifts) continue;
+          
+          for (const shift of shifts) {
+            if (canCoverShift(workHours.start, workHours.end, shift.startTime, shift.endTime)) {
+              dateShifts.set(shift.id, (dateShifts.get(shift.id) || 0) + 1);
+            }
+          }
+        }
+      }
+      
       const processedRosters: Array<{
         date: string;
         shiftId: string;
@@ -985,43 +1023,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: string;
       }> = [];
       
-      const dateRange = { start: "", end: "" };
+      const sortedDates = Array.from(shiftCounts.keys()).sort();
+      const dateRange = {
+        start: sortedDates[0] || "",
+        end: sortedDates[sortedDates.length - 1] || "",
+      };
       
-      for (let i = 0; i < parsedData.length; i++) {
-        const { date, shift, proctorCount } = parsedData[i];
-        
-        const shiftId = shiftMap.get(shift.toLowerCase());
-        if (!shiftId) {
-          validationErrors.push({ row: i + 2, error: `Άγνωστη βάρδια: ${shift}` });
-          continue;
+      for (const [dateStr, shiftMap] of shiftCounts) {
+        for (const [shiftId, proctorCount] of shiftMap) {
+          const reserveProctors = Math.ceil(proctorCount * (appSettings.reservePercentage / 100));
+          const effectiveProctors = proctorCount - reserveProctors;
+          const effectiveCapacity = effectiveProctors * appSettings.candidatesPerProctor;
+          
+          processedRosters.push({
+            date: dateStr,
+            shiftId,
+            totalProctors: proctorCount,
+            reserveProctors,
+            effectiveCapacity,
+            createdBy: adminId,
+          });
         }
-        
-        if (!dateRange.start || date < dateRange.start) {
-          dateRange.start = date;
-        }
-        if (!dateRange.end || date > dateRange.end) {
-          dateRange.end = date;
-        }
-        
-        const reserveProctors = Math.ceil(proctorCount * (appSettings.reservePercentage / 100));
-        const effectiveProctors = proctorCount - reserveProctors;
-        const effectiveCapacity = effectiveProctors * appSettings.candidatesPerProctor;
-        
-        processedRosters.push({
-          date,
-          shiftId,
-          totalProctors: proctorCount,
-          reserveProctors,
-          effectiveCapacity,
-          createdBy: adminId,
-        });
       }
       
       if (processedRosters.length === 0) {
-        return res.status(400).json({ 
-          error: "Δεν βρέθηκαν έγκυρα δεδομένα επιτηρητών",
-          validationErrors: validationErrors.length > 0 ? validationErrors : undefined,
-        });
+        return res.status(400).json({ error: "Δεν βρέθηκαν έγκυρα δεδομένα επιτηρητών" });
       }
       
       if (dateRange.start && dateRange.end) {
@@ -1034,11 +1060,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdRosters.push(created);
       }
       
+      const proctorCount = rows.length - 2;
+      
       res.json({
         success: true,
         count: createdRosters.length,
         dateRange,
-        skippedRows: validationErrors.length > 0 ? validationErrors : undefined,
+        proctorsProcessed: proctorCount,
+        datesProcessed: dates.length,
+        shiftsPerDate: shifts.length,
       });
     } catch (error) {
       console.error("Error uploading Excel proctor rosters:", error);
