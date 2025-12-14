@@ -54,12 +54,14 @@ export default function SettingsScreen() {
   const [isUploadingRosters, setIsUploadingRosters] = useState(false);
   const [showProctorModal, setShowProctorModal] = useState(false);
   const [proctorJsonInput, setProctorJsonInput] = useState("");
+  const [hasProctorRosters, setHasProctorRosters] = useState(false);
 
   const fetchSettings = useCallback(async () => {
     try {
-      const [settingsData, shiftsData] = await Promise.all([
+      const [settingsData, shiftsData, proctorRosters] = await Promise.all([
         authFetch("/api/settings"),
         authFetch("/api/shifts"),
+        authFetch("/api/proctor-rosters"),
       ]);
 
       if (settingsData) {
@@ -71,6 +73,7 @@ export default function SettingsScreen() {
         setReservePercentage(String(settingsData.reservePercentage || 15));
       }
       setShifts(shiftsData || []);
+      setHasProctorRosters(Array.isArray(proctorRosters) && proctorRosters.length > 0);
     } catch (error) {
       console.error("Failed to fetch settings:", error);
     } finally {
@@ -151,6 +154,8 @@ export default function SettingsScreen() {
         body: JSON.stringify({ data: parsedData }),
       });
       setShowProctorModal(false);
+      setHasProctorRosters(true);
+      setProctorJsonInput("");
       Alert.alert(
         "Επιτυχία",
         `Εισήχθησαν ${result.count} εγγραφές επιτηρητών από ${result.dateRange.start} έως ${result.dateRange.end}`
@@ -180,6 +185,8 @@ export default function SettingsScreen() {
         method: "POST",
         body: JSON.stringify({ excelData: base64 }),
       });
+      
+      setHasProctorRosters(true);
       
       let message = `Εισήχθησαν ${response.count} εγγραφές επιτηρητών`;
       if (response.dateRange) {
@@ -349,8 +356,9 @@ export default function SettingsScreen() {
             <View key={shift.id} style={styles.shiftRow}>
               <View style={styles.shiftInfo}>
                 <ThemedText type="body">{getShiftLabel(shift.name)}</ThemedText>
-                <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                  {shift.startTime} - {shift.endTime} ({shift.maxCandidates} θέσεις)
+                <ThemedText type="small" style={{ color: hasProctorRosters ? theme.success : theme.textSecondary }}>
+                  {shift.startTime} - {shift.endTime}
+                  {hasProctorRosters ? " (Χωρητικότητα από επιτηρητές)" : " (Ανεβάστε πρόγραμμα)"}
                 </ThemedText>
               </View>
               <Switch
