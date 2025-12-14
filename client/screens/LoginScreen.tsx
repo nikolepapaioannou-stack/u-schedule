@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Pressable, Platform, Alert } from "react-native";
+import { StyleSheet, View, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import * as LocalAuthentication from "expo-local-authentication";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 import { AppIcon } from "@/components/AppIcon";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -20,7 +20,8 @@ import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, "Login">;
 
-const BIOMETRIC_EMAIL_KEY = "@exam_scheduler_biometric_email";
+const BIOMETRIC_EMAIL_KEY = "exam_scheduler_biometric_email";
+const BIOMETRIC_PASSWORD_KEY = "exam_scheduler_biometric_password";
 
 export default function LoginScreen() {
   const { theme } = useTheme();
@@ -34,7 +35,7 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [biometricAvailable, setBiometricAvailable] = useState(false);
-  const [savedEmail, setSavedEmail] = useState<string | null>(null);
+  const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
 
   useEffect(() => {
     checkBiometricAvailability();
@@ -51,8 +52,9 @@ export default function LoginScreen() {
       const enrolled = await LocalAuthentication.isEnrolledAsync();
       setBiometricAvailable(compatible && enrolled);
       
-      const storedEmail = await AsyncStorage.getItem(BIOMETRIC_EMAIL_KEY);
-      setSavedEmail(storedEmail);
+      const storedEmail = await SecureStore.getItemAsync(BIOMETRIC_EMAIL_KEY);
+      const storedPassword = await SecureStore.getItemAsync(BIOMETRIC_PASSWORD_KEY);
+      setHasSavedCredentials(!!storedEmail && !!storedPassword);
     } catch (err) {
       setBiometricAvailable(false);
     }
@@ -69,7 +71,10 @@ export default function LoginScreen() {
 
     try {
       await login(email, password);
-      await AsyncStorage.setItem(BIOMETRIC_EMAIL_KEY, email);
+      if (Platform.OS !== "web") {
+        await SecureStore.setItemAsync(BIOMETRIC_EMAIL_KEY, email);
+        await SecureStore.setItemAsync(BIOMETRIC_PASSWORD_KEY, password);
+      }
     } catch (err: any) {
       setError(err.message || "Σφάλμα σύνδεσης");
     } finally {
@@ -80,26 +85,31 @@ export default function LoginScreen() {
   async function handleBiometricLogin() {
     if (Platform.OS === "web") return;
     
-    if (!savedEmail) {
-      setError("Συνδεθείτε πρώτα με email για να ενεργοποιήσετε το δαχτυλικό αποτύπωμα");
-      return;
-    }
+    setIsLoading(true);
+    setError("");
 
     try {
+      const storedEmail = await SecureStore.getItemAsync(BIOMETRIC_EMAIL_KEY);
+      const storedPassword = await SecureStore.getItemAsync(BIOMETRIC_PASSWORD_KEY);
+      
+      if (!storedEmail || !storedPassword) {
+        setError("Συνδεθείτε πρώτα με email για να ενεργοποιήσετε το δαχτυλικό αποτύπωμα");
+        setIsLoading(false);
+        return;
+      }
+
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: "Σύνδεση με δαχτυλικό αποτύπωμα",
         cancelLabel: "Ακύρωση",
       });
 
       if (result.success) {
-        setEmail(savedEmail);
-        Alert.alert(
-          "Δαχτυλικό Αποτύπωμα",
-          "Επαληθεύτηκε! Εισάγετε τον κωδικό σας για να ολοκληρώσετε τη σύνδεση."
-        );
+        await login(storedEmail, storedPassword);
       }
-    } catch (err) {
-      setError("Σφάλμα βιομετρικού ελέγχου");
+    } catch (err: any) {
+      setError(err.message || "Σφάλμα βιομετρικού ελέγχου");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -152,7 +162,7 @@ export default function LoginScreen() {
             {isLoading ? "Σύνδεση..." : "Σύνδεση"}
           </Button>
 
-          {biometricAvailable && savedEmail ? (
+          {biometricAvailable && hasSavedCredentials ? (
             <Pressable
               style={[styles.biometricButton, { borderColor: theme.border }]}
               onPress={handleBiometricLogin}

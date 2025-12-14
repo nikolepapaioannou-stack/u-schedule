@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 
 interface User {
@@ -23,7 +25,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const AUTH_TOKEN_KEY = "@exam_scheduler_token";
-const BIOMETRIC_CREDENTIALS_KEY = "@exam_scheduler_biometric_creds";
+const BIOMETRIC_EMAIL_KEY = "exam_scheduler_biometric_email";
+const BIOMETRIC_PASSWORD_KEY = "exam_scheduler_biometric_password";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -100,7 +103,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     
     await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-    await AsyncStorage.removeItem(BIOMETRIC_CREDENTIALS_KEY);
+    if (Platform.OS !== "web") {
+      await SecureStore.deleteItemAsync(BIOMETRIC_EMAIL_KEY);
+      await SecureStore.deleteItemAsync(BIOMETRIC_PASSWORD_KEY);
+    }
     setToken(null);
     setUser(null);
   }
