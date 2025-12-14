@@ -1,22 +1,33 @@
 import { useEffect } from "react";
-import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { Platform } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 
 export function PushNotificationHandler() {
-  const { notification, isRegistered } = usePushNotifications();
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (notification) {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
-      
-      const data = notification.request.content.data;
-      if (data?.bookingId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
-      }
+    if (Platform.OS === "android" || Platform.OS === "web") {
+      return;
     }
-  }, [notification, queryClient]);
+
+    let notificationSubscription: any = null;
+    
+    const setupNotifications = async () => {
+      try {
+        const { usePushNotifications } = await import("@/hooks/usePushNotifications");
+      } catch (error) {
+        console.log("Push notifications not available");
+      }
+    };
+    
+    setupNotifications();
+    
+    return () => {
+      if (notificationSubscription) {
+        notificationSubscription.remove();
+      }
+    };
+  }, [queryClient]);
 
   return null;
 }

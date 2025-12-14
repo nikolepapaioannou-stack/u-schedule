@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Platform } from "react-native";
-import * as Notifications from "expo-notifications";
 import {
   registerPushToken,
   addNotificationReceivedListener,
@@ -11,10 +10,10 @@ import { useAuth } from "@/lib/auth";
 export function usePushNotifications() {
   const { user, token } = useAuth();
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
-  const [notification, setNotification] = useState<Notifications.Notification | null>(null);
+  const [notification, setNotification] = useState<any | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
-  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
-  const responseListener = useRef<Notifications.EventSubscription | null>(null);
+  const notificationListener = useRef<{ remove: () => void } | null>(null);
+  const responseListener = useRef<{ remove: () => void } | null>(null);
 
   const registerForNotifications = useCallback(async () => {
     if (!token || Platform.OS === "web" || Platform.OS === "android") {

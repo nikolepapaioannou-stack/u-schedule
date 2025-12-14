@@ -1,10 +1,15 @@
-import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
 import { Platform } from "react-native";
-import Constants from "expo-constants";
 import { getApiUrl } from "./query-client";
 
-if (Platform.OS !== "android" && Platform.OS !== "web") {
+let Notifications: any = null;
+let Device: any = null;
+let Constants: any = null;
+
+if (Platform.OS === "ios") {
+  Notifications = require("expo-notifications");
+  Device = require("expo-device");
+  Constants = require("expo-constants");
+  
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -18,7 +23,7 @@ if (Platform.OS !== "android" && Platform.OS !== "web") {
 
 export interface PushNotificationState {
   expoPushToken: string | null;
-  notification: Notifications.Notification | null;
+  notification: any | null;
 }
 
 export interface PermissionResult {
@@ -28,7 +33,7 @@ export interface PermissionResult {
 }
 
 export async function getNotificationPermissionStatus(): Promise<PermissionResult> {
-  if (Platform.OS === "web") {
+  if (Platform.OS === "web" || Platform.OS === "android" || !Notifications) {
     return { granted: false, canAskAgain: false, shouldOpenSettings: false };
   }
   
@@ -41,8 +46,8 @@ export async function getNotificationPermissionStatus(): Promise<PermissionResul
 }
 
 async function registerForPushNotificationsAsync(): Promise<string | null> {
-  if (Platform.OS === "web") {
-    console.log("Push notifications are not available on web");
+  if (Platform.OS === "web" || Platform.OS === "android" || !Notifications || !Device) {
+    console.log("Push notifications are not available on this platform");
     return null;
   }
 
@@ -66,15 +71,6 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
   if (finalStatus !== "granted") {
     console.log("Failed to get push token for push notification");
     return null;
-  }
-
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "default",
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: "#2196F3",
-    });
   }
 
   try {
@@ -138,14 +134,16 @@ export async function unregisterPushToken(authToken: string): Promise<boolean> {
 }
 
 export function addNotificationReceivedListener(
-  listener: (notification: Notifications.Notification) => void
+  listener: (notification: any) => void
 ) {
+  if (!Notifications) return { remove: () => {} };
   return Notifications.addNotificationReceivedListener(listener);
 }
 
 export function addNotificationResponseReceivedListener(
-  listener: (response: Notifications.NotificationResponse) => void
+  listener: (response: any) => void
 ) {
+  if (!Notifications) return { remove: () => {} };
   return Notifications.addNotificationResponseReceivedListener(listener);
 }
 
@@ -155,6 +153,7 @@ export async function schedulePushNotification(
   data?: Record<string, unknown>,
   seconds?: number
 ) {
+  if (!Notifications) return;
   await Notifications.scheduleNotificationAsync({
     content: {
       title,
@@ -167,13 +166,16 @@ export async function schedulePushNotification(
 }
 
 export async function getBadgeCount(): Promise<number> {
+  if (!Notifications) return 0;
   return await Notifications.getBadgeCountAsync();
 }
 
 export async function setBadgeCount(count: number): Promise<void> {
+  if (!Notifications) return;
   await Notifications.setBadgeCountAsync(count);
 }
 
 export async function dismissAllNotifications(): Promise<void> {
+  if (!Notifications) return;
   await Notifications.dismissAllNotificationsAsync();
 }
