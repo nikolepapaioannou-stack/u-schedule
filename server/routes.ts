@@ -317,7 +317,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     const closedDate = await storage.createClosedDate({
-      ...parsed.data,
+      date: parsed.data.date,
+      reason: parsed.data.reason ?? undefined,
       createdBy: adminId,
     });
     res.json(closedDate);
