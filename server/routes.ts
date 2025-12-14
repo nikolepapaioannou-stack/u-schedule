@@ -494,25 +494,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ error: "Η κράτηση δεν έχει καθορισμένη βάρδια" });
     }
     
-    const roster = await storage.getProctorRosterByDateAndShift(booking.bookingDate, booking.shiftId);
-    const shift = await storage.getShift(booking.shiftId);
+    let effectiveCapacity: number;
+    let currentApprovedCandidates: number;
+    let hasHourlyCapacity = false;
+    let hasRoster = false;
     
-    const rosterCapacity = roster?.effectiveCapacity;
-    const shiftCapacity = shift?.maxCandidates;
-    
-    if (rosterCapacity === undefined && (shiftCapacity === undefined || shiftCapacity === 0)) {
-      return res.status(400).json({ 
-        error: "Δεν έχει οριστεί χωρητικότητα για αυτή τη βάρδια. Παρακαλώ ρυθμίστε το πρόγραμμα επιτηρητών ή την μέγιστη χωρητικότητα βάρδιας.",
-        configurationMissing: true,
-      });
+    if (booking.examStartHour !== null && booking.examStartHour !== undefined) {
+      const hourlyCapacity = await storage.getHourlyCapacityByDateAndHour(booking.bookingDate, booking.examStartHour);
+      
+      if (hourlyCapacity) {
+        hasHourlyCapacity = true;
+        effectiveCapacity = hourlyCapacity.effectiveCapacity;
+        
+        const existingBookings = await storage.getBookingsByDateAndHour(booking.bookingDate, booking.examStartHour);
+        currentApprovedCandidates = existingBookings
+          .filter(b => b.status === "approved" && b.id !== id)
+          .reduce((sum, b) => sum + b.candidateCount, 0);
+      } else {
+        const roster = await storage.getProctorRosterByDateAndShift(booking.bookingDate, booking.shiftId);
+        const shift = await storage.getShift(booking.shiftId);
+        hasRoster = !!roster;
+        
+        const rosterCapacity = roster?.effectiveCapacity;
+        const shiftCapacity = shift?.maxCandidates;
+        
+        if (rosterCapacity === undefined && (shiftCapacity === undefined || shiftCapacity === 0)) {
+          return res.status(400).json({ 
+            error: `Δεν έχει οριστεί χωρητικότητα για την ώρα ${booking.examStartHour}:00. Παρακαλώ ρυθμίστε το πρόγραμμα επιτηρητών.`,
+            configurationMissing: true,
+            examStartHour: booking.examStartHour,
+          });
+        }
+        
+        effectiveCapacity = rosterCapacity ?? shiftCapacity ?? 0;
+        
+        const existingBookings = await storage.getBookingsByDateAndShift(booking.bookingDate, booking.shiftId);
+        currentApprovedCandidates = existingBookings
+          .filter(b => b.status === "approved" && b.id !== id)
+          .reduce((sum, b) => sum + b.candidateCount, 0);
+      }
+    } else {
+      const roster = await storage.getProctorRosterByDateAndShift(booking.bookingDate, booking.shiftId);
+      const shift = await storage.getShift(booking.shiftId);
+      
+      const rosterCapacity = roster?.effectiveCapacity;
+      const shiftCapacity = shift?.maxCandidates;
+      hasRoster = !!roster;
+      
+      if (rosterCapacity === undefined && (shiftCapacity === undefined || shiftCapacity === 0)) {
+        return res.status(400).json({ 
+          error: "Δεν έχει οριστεί χωρητικότητα για αυτή τη βάρδια. Παρακαλώ ρυθμίστε το πρόγραμμα επιτηρητών ή την μέγιστη χωρητικότητα βάρδιας.",
+          configurationMissing: true,
+        });
+      }
+      
+      effectiveCapacity = rosterCapacity ?? shiftCapacity ?? 0;
+      
+      const existingBookings = await storage.getBookingsByDateAndShift(booking.bookingDate, booking.shiftId);
+      currentApprovedCandidates = existingBookings
+        .filter(b => b.status === "approved" && b.id !== id)
+        .reduce((sum, b) => sum + b.candidateCount, 0);
     }
-    
-    const effectiveCapacity = rosterCapacity ?? shiftCapacity ?? 0;
-    
-    const existingBookings = await storage.getBookingsByDateAndShift(booking.bookingDate, booking.shiftId);
-    const currentApprovedCandidates = existingBookings
-      .filter(b => b.status === "approved" && b.id !== id)
-      .reduce((sum, b) => sum + b.candidateCount, 0);
     
     const totalAfterApproval = currentApprovedCandidates + booking.candidateCount;
     const isOverCapacity = totalAfterApproval > effectiveCapacity;
@@ -526,7 +568,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           requestedCandidates: booking.candidateCount,
           totalAfterApproval,
           overage: totalAfterApproval - effectiveCapacity,
-          hasRoster: !!roster,
+          hasHourlyCapacity,
+          hasRoster,
+          examStartHour: booking.examStartHour,
         },
       });
     }
@@ -547,7 +591,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         requestedCandidates: booking.candidateCount,
         totalAfterApproval,
         overage: totalAfterApproval - effectiveCapacity,
-        hasRoster: !!roster,
+        hasHourlyCapacity,
+        hasRoster,
+        examStartHour: booking.examStartHour,
       });
       console.log(`[CAPACITY OVERRIDE] Admin ${adminId} approved booking ${id} over capacity: ${totalAfterApproval}/${effectiveCapacity} at ${timestamp.toISOString()}`);
     }
@@ -986,6 +1032,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const appSettings = await storage.getSettings();
       
       const shiftCounts: Map<string, Map<string, number>> = new Map();
+      const hourlyCounts: Map<string, Map<number, number>> = new Map();
       
       for (const { dateStr } of dates) {
         const dateShifts = new Map<string, number>();
@@ -993,6 +1040,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dateShifts.set(shift.id, 0);
         }
         shiftCounts.set(dateStr, dateShifts);
+        hourlyCounts.set(dateStr, new Map<number, number>());
       }
       
       for (let rowIdx = 2; rowIdx < rows.length; rowIdx++) {
@@ -1010,6 +1058,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (canCoverShift(workHours.start, workHours.end, shift.startTime, shift.endTime)) {
               dateShifts.set(shift.id, (dateShifts.get(shift.id) || 0) + 1);
             }
+          }
+          
+          const dateHours = hourlyCounts.get(dateStr);
+          if (!dateHours) continue;
+          
+          const startHour = Math.floor(workHours.start / 60);
+          const lastExamStartMinutes = workHours.end - 60;
+          const lastExamHour = Math.floor(lastExamStartMinutes / 60);
+          
+          for (let hour = startHour; hour <= lastExamHour; hour++) {
+            dateHours.set(hour, (dateHours.get(hour) || 0) + 1);
           }
         }
       }
@@ -1058,8 +1117,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Δεν βρέθηκαν έγκυρα δεδομένα επιτηρητών" });
       }
       
+      const processedHourlyCapacities: Array<{
+        date: string;
+        hour: number;
+        totalProctors: number;
+        reserveProctors: number;
+        effectiveCapacity: number;
+        createdBy: string;
+      }> = [];
+      
+      for (const [dateStr, hourMap] of hourlyCounts) {
+        for (const [hour, proctorCount] of hourMap) {
+          const reserveProctors = Math.ceil(proctorCount * (appSettings.reservePercentage / 100));
+          const effectiveProctors = proctorCount - reserveProctors;
+          const effectiveCapacity = effectiveProctors * appSettings.candidatesPerProctor;
+          
+          console.log(`[Excel Upload] Date: ${dateStr}, Hour: ${hour}:00, Proctors: ${proctorCount}, Reserve: ${reserveProctors}, Effective: ${effectiveProctors}, Capacity: ${effectiveCapacity}`);
+          
+          processedHourlyCapacities.push({
+            date: dateStr,
+            hour,
+            totalProctors: proctorCount,
+            reserveProctors,
+            effectiveCapacity,
+            createdBy: adminId,
+          });
+        }
+      }
+      
       if (dateRange.start && dateRange.end) {
         await storage.deleteProctorRostersByDateRange(dateRange.start, dateRange.end);
+        await storage.deleteHourlyCapacitiesByDateRange(dateRange.start, dateRange.end);
       }
       
       const createdRosters = [];
@@ -1068,15 +1156,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdRosters.push(created);
       }
       
+      const createdHourlyCapacities = [];
+      for (const capacity of processedHourlyCapacities) {
+        const created = await storage.createHourlyCapacity(capacity);
+        createdHourlyCapacities.push(created);
+      }
+      
       const proctorCount = rows.length - 2;
+      
+      const hourlyCapacitySummary: Record<string, Record<number, number>> = {};
+      for (const cap of createdHourlyCapacities) {
+        if (!hourlyCapacitySummary[cap.date]) {
+          hourlyCapacitySummary[cap.date] = {};
+        }
+        hourlyCapacitySummary[cap.date][cap.hour] = cap.effectiveCapacity;
+      }
       
       res.json({
         success: true,
         count: createdRosters.length,
+        hourlyCapacitiesCount: createdHourlyCapacities.length,
         dateRange,
         proctorsProcessed: proctorCount,
         datesProcessed: dates.length,
         shiftsPerDate: shifts.length,
+        hourlyCapacitySummary,
       });
     } catch (error) {
       console.error("Error uploading Excel proctor rosters:", error);
@@ -1100,6 +1204,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting proctor rosters:", error);
       res.status(500).json({ error: "Σφάλμα κατά τη διαγραφή προγράμματος επιτηρητών" });
+    }
+  });
+
+  app.get("/api/capacity/hourly", async (req, res) => {
+    const adminId = await requireAdmin(req, res);
+    if (!adminId) return;
+    
+    try {
+      const { start, end } = req.query;
+      
+      if (!start || !end || typeof start !== "string" || typeof end !== "string") {
+        return res.status(400).json({ error: "Απαιτούνται παράμετροι start και end" });
+      }
+      
+      const hourlyCapacities = await storage.getHourlyCapacitiesInRange(start, end);
+      
+      const groupedByDate: Record<string, Array<{
+        hour: number;
+        totalProctors: number;
+        reserveProctors: number;
+        effectiveCapacity: number;
+      }>> = {};
+      
+      for (const cap of hourlyCapacities) {
+        if (!groupedByDate[cap.date]) {
+          groupedByDate[cap.date] = [];
+        }
+        groupedByDate[cap.date].push({
+          hour: cap.hour,
+          totalProctors: cap.totalProctors,
+          reserveProctors: cap.reserveProctors,
+          effectiveCapacity: cap.effectiveCapacity,
+        });
+      }
+      
+      for (const date of Object.keys(groupedByDate)) {
+        groupedByDate[date].sort((a, b) => a.hour - b.hour);
+      }
+      
+      res.json({
+        dateRange: { start, end },
+        data: groupedByDate,
+      });
+    } catch (error) {
+      console.error("Error fetching hourly capacities:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την ανάκτηση ωριαίας χωρητικότητας" });
+    }
+  });
+
+  app.get("/api/capacity/hourly/:date/:hour", async (req, res) => {
+    const userId = await requireAuth(req, res);
+    if (!userId) return;
+    
+    try {
+      const { date, hour } = req.params;
+      const hourNum = parseInt(hour, 10);
+      
+      if (isNaN(hourNum)) {
+        return res.status(400).json({ error: "Μη έγκυρη ώρα" });
+      }
+      
+      const capacity = await storage.getHourlyCapacityByDateAndHour(date, hourNum);
+      
+      if (capacity) {
+        const existingBookings = await storage.getBookingsByDateAndHour(date, hourNum);
+        const bookedCandidates = existingBookings
+          .filter(b => b.status === "approved" || b.status === "pending" || b.status === "holding")
+          .reduce((sum, b) => sum + b.candidateCount, 0);
+        
+        return res.json({
+          hasHourlyCapacity: true,
+          effectiveCapacity: capacity.effectiveCapacity,
+          totalProctors: capacity.totalProctors,
+          reserveProctors: capacity.reserveProctors,
+          bookedCandidates,
+          availableCapacity: capacity.effectiveCapacity - bookedCandidates,
+        });
+      }
+      
+      const appSettings = await storage.getSettings();
+      res.json({
+        hasHourlyCapacity: false,
+        effectiveCapacity: appSettings.maxCandidatesPerDay,
+        totalProctors: null,
+        reserveProctors: null,
+        bookedCandidates: 0,
+        availableCapacity: appSettings.maxCandidatesPerDay,
+      });
+    } catch (error) {
+      console.error("Error fetching hourly capacity:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την ανάκτηση ωριαίας χωρητικότητας" });
     }
   });
 
