@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { StyleSheet, View, Alert, Switch, Pressable, Platform, Modal } from "react-native";
+import { StyleSheet, View, Alert, Switch, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
@@ -46,14 +46,12 @@ export default function SettingsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [workingDays, setWorkingDays] = useState("6");
-  const [holdDuration, setHoldDuration] = useState("15");
-  const [maxCandidates, setMaxCandidates] = useState("100");
-  const [candidatesPerProctor, setCandidatesPerProctor] = useState("25");
-  const [reservePercentage, setReservePercentage] = useState("15");
+  const [workingDays, setWorkingDays] = useState("");
+  const [holdDuration, setHoldDuration] = useState("");
+  const [maxCandidates, setMaxCandidates] = useState("");
+  const [candidatesPerProctor, setCandidatesPerProctor] = useState("");
+  const [reservePercentage, setReservePercentage] = useState("");
   const [isUploadingRosters, setIsUploadingRosters] = useState(false);
-  const [showProctorModal, setShowProctorModal] = useState(false);
-  const [proctorJsonInput, setProctorJsonInput] = useState("");
   const [hasProctorRosters, setHasProctorRosters] = useState(false);
 
   const fetchSettings = useCallback(async () => {
@@ -66,16 +64,29 @@ export default function SettingsScreen() {
 
       if (settingsData) {
         setSettings(settingsData);
-        setWorkingDays(String(settingsData.workingDaysRule));
-        setHoldDuration(String(settingsData.holdDurationMinutes));
-        setMaxCandidates(String(settingsData.maxCandidatesPerDay));
-        setCandidatesPerProctor(String(settingsData.candidatesPerProctor || 25));
-        setReservePercentage(String(settingsData.reservePercentage || 15));
+        setWorkingDays(String(settingsData.workingDaysRule ?? 6));
+        setHoldDuration(String(settingsData.holdDurationMinutes ?? 15));
+        setMaxCandidates(String(settingsData.maxCandidatesPerDay ?? 100));
+        setCandidatesPerProctor(String(settingsData.candidatesPerProctor ?? 25));
+        setReservePercentage(String(settingsData.reservePercentage ?? 15));
+      } else {
+        // Set safe defaults if no settings returned
+        setWorkingDays("6");
+        setHoldDuration("15");
+        setMaxCandidates("100");
+        setCandidatesPerProctor("25");
+        setReservePercentage("15");
       }
       setShifts(shiftsData || []);
       setHasProctorRosters(Array.isArray(proctorRosters) && proctorRosters.length > 0);
     } catch (error) {
       console.error("Failed to fetch settings:", error);
+      // Set safe defaults on fetch failure to keep form usable
+      if (!workingDays) setWorkingDays("6");
+      if (!holdDuration) setHoldDuration("15");
+      if (!maxCandidates) setMaxCandidates("100");
+      if (!candidatesPerProctor) setCandidatesPerProctor("25");
+      if (!reservePercentage) setReservePercentage("15");
     } finally {
       setIsLoading(false);
     }
@@ -127,43 +138,11 @@ export default function SettingsScreen() {
           reservePercentage: reservePercentageNum,
         }),
       });
-      Alert.alert("Επιτυχία", "Οι ρυθμίσεις αποθηκεύτηκαν");
+      Alert.alert("Επιτυχία", "Οι ρυθμίσεις αποθηκεύτηκαν επιτυχώς!");
     } catch (err: any) {
       Alert.alert("Σφάλμα", err.message || "Αποτυχία αποθήκευσης");
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleUploadProctorSchedule = () => {
-    setProctorJsonInput("");
-    setShowProctorModal(true);
-  };
-
-  const handleSubmitProctorData = async () => {
-    if (!proctorJsonInput.trim()) {
-      Alert.alert("Σφάλμα", "Εισάγετε δεδομένα JSON");
-      return;
-    }
-    
-    setIsUploadingRosters(true);
-    try {
-      const parsedData = JSON.parse(proctorJsonInput);
-      const result = await authFetch("/api/proctor-rosters/upload", {
-        method: "POST",
-        body: JSON.stringify({ data: parsedData }),
-      });
-      setShowProctorModal(false);
-      setHasProctorRosters(true);
-      setProctorJsonInput("");
-      Alert.alert(
-        "Επιτυχία",
-        `Εισήχθησαν ${result.count} εγγραφές επιτηρητών από ${result.dateRange.start} έως ${result.dateRange.end}`
-      );
-    } catch (err: any) {
-      Alert.alert("Σφάλμα", err.message || "Αποτυχία εισαγωγής δεδομένων");
-    } finally {
-      setIsUploadingRosters(false);
     }
   };
 
@@ -180,6 +159,10 @@ export default function SettingsScreen() {
           setIsUploadingRosters(true);
           try {
             const reader = new FileReader();
+            reader.onerror = () => {
+              Alert.alert("Σφάλμα", "Αποτυχία ανάγνωσης αρχείου");
+              setIsUploadingRosters(false);
+            };
             reader.onload = async (event) => {
               try {
                 const base64 = (event.target?.result as string)?.split(",")[1];
@@ -381,23 +364,12 @@ export default function SettingsScreen() {
             <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
               Ανεβάστε αρχείο Excel με στήλες: Ημερομηνία, Βάρδια (morning/midday/afternoon), Αριθμός Επιτηρητών
             </ThemedText>
-            <View style={{ flexDirection: "row", gap: Spacing.sm }}>
-              <Button
-                onPress={handleExcelUpload}
-                disabled={isUploadingRosters}
-                style={{ flex: 1 }}
-              >
-                {isUploadingRosters ? "Μεταφόρτωση..." : "Ανέβασμα Excel"}
-              </Button>
-              <Button
-                onPress={handleUploadProctorSchedule}
-                disabled={isUploadingRosters}
-                variant="secondary"
-                style={{ flex: 1 }}
-              >
-                JSON
-              </Button>
-            </View>
+            <Button
+              onPress={handleExcelUpload}
+              disabled={isUploadingRosters}
+            >
+              {isUploadingRosters ? "Μεταφόρτωση..." : "Ανέβασμα Excel"}
+            </Button>
           </View>
         </Card>
 
@@ -449,48 +421,6 @@ export default function SettingsScreen() {
           </ThemedText>
         </View>
       </KeyboardAwareScrollViewCompat>
-
-      <Modal
-        visible={showProctorModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowProctorModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}>
-            <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>
-              Εισαγωγή Προγράμματος Επιτηρητών
-            </ThemedText>
-            <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
-              Μορφή: [{"{"}"date": "2025-01-15", "shift": "morning", "proctorCount": 10{"}"}]
-            </ThemedText>
-            <TextInput
-              label="Δεδομένα JSON"
-              value={proctorJsonInput}
-              onChangeText={setProctorJsonInput}
-              multiline
-              numberOfLines={6}
-              placeholder='[{"date": "2025-01-15", "shift": "morning", "proctorCount": 10}]'
-            />
-            <View style={styles.modalButtons}>
-              <Button
-                onPress={() => setShowProctorModal(false)}
-                variant="secondary"
-                style={{ flex: 1, marginRight: Spacing.sm }}
-              >
-                Ακύρωση
-              </Button>
-              <Button
-                onPress={handleSubmitProctorData}
-                disabled={isUploadingRosters}
-                style={{ flex: 1 }}
-              >
-                {isUploadingRosters ? "Αποθήκευση..." : "Αποθήκευση"}
-              </Button>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </ThemedView>
   );
 }
@@ -532,22 +462,5 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
     borderTopWidth: 1,
     borderTopColor: "rgba(128, 128, 128, 0.2)",
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    padding: Spacing.xl,
-  },
-  modalContent: {
-    width: "100%",
-    maxWidth: 400,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.xl,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    marginTop: Spacing.lg,
   },
 });

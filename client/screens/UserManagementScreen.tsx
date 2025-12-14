@@ -40,7 +40,7 @@ const roleColors: Record<UserRole, { bg: string; text: string }> = {
 export default function UserManagementScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, isLoading: isAuthLoading } = useAuth();
   const authFetch = useAuthenticatedFetch();
 
   const [users, setUsers] = useState<User[]>([]);
@@ -58,6 +58,7 @@ export default function UserManagementScreen() {
   const isSuperAdmin = currentUser?.role === "superadmin";
 
   const fetchUsers = useCallback(async () => {
+    setIsLoading(true);
     try {
       const data = await authFetch("/api/admin/users");
       if (data) {
@@ -65,16 +66,30 @@ export default function UserManagementScreen() {
       }
     } catch (error) {
       console.error("Failed to fetch users:", error);
-      Alert.alert("Σφάλμα", "Δεν ήταν δυνατή η φόρτωση των χρηστών");
+      // Don't show alert if session is missing - user will be redirected to login
+      if (error instanceof Error && !error.message.includes("συνεδρία") && !error.message.includes("Failed to fetch")) {
+        Alert.alert("Σφάλμα", "Δεν ήταν δυνατή η φόρτωση των χρηστών");
+      }
     } finally {
       setIsLoading(false);
     }
   }, [authFetch]);
 
+  // Effect to handle initial loading state when no user is available
+  React.useEffect(() => {
+    if (!isAuthLoading && !currentUser) {
+      // Auth finished loading but no user - stop loading
+      setIsLoading(false);
+    }
+  }, [isAuthLoading, currentUser]);
+
   useFocusEffect(
     useCallback(() => {
-      fetchUsers();
-    }, [fetchUsers])
+      // Wait for auth to finish loading before fetching users
+      if (!isAuthLoading && currentUser) {
+        fetchUsers();
+      }
+    }, [fetchUsers, isAuthLoading, currentUser])
   );
 
   const handleCreateUser = async () => {
@@ -222,7 +237,7 @@ export default function UserManagementScreen() {
     );
   };
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
       <ThemedView style={styles.container}>
         <ActivityIndicator size="large" color={theme.primary} />

@@ -157,34 +157,55 @@ export function useAuth() {
 }
 
 export function useAuthenticatedFetch() {
-  const auth = useAuth();
-  
-  return async (path: string, options: RequestInit = {}) => {
-    // Read token fresh from AsyncStorage to ensure we have the latest
-    let currentToken = auth.token;
+  return async (path: string, options: RequestInit = {}, retries = 2) => {
+    // Always read token directly from AsyncStorage to ensure we have the latest
+    let currentToken: string | null = null;
+    try {
+      currentToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+    } catch (e) {
+      console.error("Failed to read token from storage:", e);
+    }
+    
     if (!currentToken) {
-      try {
-        currentToken = await AsyncStorage.getItem("@exam_scheduler_token");
-      } catch (e) {
-        console.error("Failed to read token from storage:", e);
-      }
+      throw new Error("Δεν υπάρχει συνεδρία - παρακαλώ συνδεθείτε ξανά");
     }
     
     const baseUrl = getApiUrl();
-    const response = await fetch(new URL(path, baseUrl).toString(), {
-      ...options,
-      headers: {
-        ...options.headers,
-        Authorization: currentToken ? `Bearer ${currentToken}` : "",
-        "Content-Type": "application/json",
-      },
-    });
+    let lastError: Error | null = null;
     
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Σφάλμα δικτύου" }));
-      throw new Error(error.error || "Σφάλμα αιτήματος");
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(new URL(path, baseUrl).toString(), {
+          ...options,
+          headers: {
+            ...options.headers,
+            Authorization: `Bearer ${currentToken}`,
+            "Content-Type": "application/json",
+          },
+        });
+        
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: "Σφάλμα δικτύου" }));
+          throw new Error(error.error || "Σφάλμα αιτήματος");
+        }
+        
+        return response.json();
+      } catch (e) {
+        lastError = e instanceof Error ? e : new Error(String(e));
+        // Retry on network errors (different messages on web vs native)
+        const isNetworkError = 
+          e instanceof TypeError ||
+          lastError.message.includes("Failed to fetch") ||
+          lastError.message.includes("Network request failed") ||
+          lastError.message.includes("network");
+        if (attempt < retries && isNetworkError) {
+          await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+          continue;
+        }
+        throw lastError;
+      }
     }
     
-    return response.json();
+    throw lastError || new Error("Σφάλμα αιτήματος");
   };
 }
