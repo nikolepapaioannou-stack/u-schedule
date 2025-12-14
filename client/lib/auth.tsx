@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
@@ -157,7 +157,7 @@ export function useAuth() {
 }
 
 export function useAuthenticatedFetch() {
-  return async (path: string, options: RequestInit = {}, retries = 2) => {
+  return useCallback(async (path: string, options: RequestInit = {}, retries = 2) => {
     // Always read token directly from AsyncStorage to ensure we have the latest
     let currentToken: string | null = null;
     try {
@@ -207,5 +207,5 @@ export function useAuthenticatedFetch() {
     }
     
     throw lastError || new Error("Σφάλμα αιτήματος");
-  };
+  }, []);
 }
