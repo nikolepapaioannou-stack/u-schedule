@@ -156,15 +156,25 @@ export function useAuth() {
 }
 
 export function useAuthenticatedFetch() {
-  const { token } = useAuth();
+  const auth = useAuth();
   
   return async (path: string, options: RequestInit = {}) => {
+    // Read token fresh from AsyncStorage to ensure we have the latest
+    let currentToken = auth.token;
+    if (!currentToken) {
+      try {
+        currentToken = await AsyncStorage.getItem("@exam_scheduler_token");
+      } catch (e) {
+        console.error("Failed to read token from storage:", e);
+      }
+    }
+    
     const baseUrl = getApiUrl();
     const response = await fetch(new URL(path, baseUrl).toString(), {
       ...options,
       headers: {
         ...options.headers,
-        Authorization: token ? `Bearer ${token}` : "",
+        Authorization: currentToken ? `Bearer ${currentToken}` : "",
         "Content-Type": "application/json",
       },
     });

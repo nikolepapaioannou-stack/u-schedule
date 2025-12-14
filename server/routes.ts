@@ -137,14 +137,16 @@ async function getAvailableSlots(
         const endHour = parseInt(shift.endTime.split(":")[0]);
         const hourlySlots: HourlySlot[] = [];
         
+        
         for (let hour = startHour; hour < endHour; hour++) {
           const hourlyCapacity = hourlyCapacityMap.get(hour);
           const hourBookings = await storage.getBookingsByDateAndHour(dateStr, hour);
           const hourBookedCandidates = hourBookings.reduce((sum, b) => sum + b.candidateCount, 0);
           
-          // Use hourly capacity if configured, otherwise fall back to shift's max capacity
-          const effectiveCapacity = hourlyCapacity?.effectiveCapacity ?? shift.maxCandidates;
+          // Use hourly capacity if configured and > 0, otherwise fall back to shift's max capacity
+          const effectiveCapacity = hourlyCapacity?.effectiveCapacity || shift.maxCandidates;
           const hourAvailable = effectiveCapacity - hourBookedCandidates;
+          
           
           if (hourAvailable > 0) {
             hourlySlots.push({
@@ -155,6 +157,7 @@ async function getAvailableSlots(
             });
           }
         }
+        
         
         if (availableCapacity > 0 || hourlySlots.length > 0) {
           let priority = 3;

@@ -144,7 +144,7 @@ export default function AvailableSlotsScreen() {
     const currentSelectedHour = selectedHour?.slotKey === slotKey ? selectedHour.hour : null;
 
     return (
-      <Card elevation={1} style={[styles.slotCard, { borderLeftColor: priorityColor, borderLeftWidth: 4 }]}>
+      <Card elevation={1} style={{ ...styles.slotCard, borderLeftColor: priorityColor, borderLeftWidth: 4 }}>
         <Pressable onPress={() => toggleSlotExpansion(slotKey)}>
           <View style={styles.cardHeader}>
             <View style={{ flex: 1 }}>
