@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import { storage, initializeDefaultData } from "./storage";
 import { insertUserSchema, loginSchema, searchSlotsSchema, insertBookingSchema, insertClosedDateSchema } from "@shared/schema";
 import { createHash, randomBytes } from "crypto";
+import * as XLSX from "xlsx";
 
 function hashPassword(password: string): string {
   return createHash("sha256").update(password).digest("hex");
@@ -879,6 +880,168 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error uploading proctor rosters:", error);
       res.status(500).json({ error: "Σφάλμα κατά τη μεταφόρτωση προγράμματος επιτηρητών" });
+    }
+  });
+
+  app.post("/api/proctor-rosters/upload-excel", async (req, res) => {
+    const adminId = await requireAdmin(req, res);
+    if (!adminId) return;
+    
+    try {
+      const { excelData } = req.body;
+      
+      if (!excelData) {
+        return res.status(400).json({ error: "Δεν βρέθηκε αρχείο Excel" });
+      }
+      
+      const buffer = Buffer.from(excelData, "base64");
+      const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true });
+      
+      if (workbook.SheetNames.length === 0) {
+        return res.status(400).json({ error: "Το αρχείο Excel είναι κενό" });
+      }
+      
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as unknown[][];
+      
+      if (rows.length < 2) {
+        return res.status(400).json({ error: "Το αρχείο πρέπει να έχει τουλάχιστον μία γραμμή δεδομένων" });
+      }
+      
+      const headerRow = rows[0] as string[];
+      const dateColIndex = headerRow.findIndex(h => 
+        typeof h === "string" && (h.toLowerCase().includes("ημερομηνία") || h.toLowerCase().includes("date"))
+      );
+      const shiftColIndex = headerRow.findIndex(h => 
+        typeof h === "string" && (h.toLowerCase().includes("βάρδια") || h.toLowerCase().includes("shift"))
+      );
+      const proctorColIndex = headerRow.findIndex(h => 
+        typeof h === "string" && (h.toLowerCase().includes("επιτηρητ") || h.toLowerCase().includes("proctor") || h.toLowerCase().includes("αριθμός"))
+      );
+      
+      if (dateColIndex === -1 || shiftColIndex === -1 || proctorColIndex === -1) {
+        return res.status(400).json({ 
+          error: "Δεν βρέθηκαν οι απαραίτητες στήλες. Χρειάζονται στήλες: Ημερομηνία, Βάρδια, Αριθμός Επιτηρητών",
+          foundHeaders: headerRow,
+        });
+      }
+      
+      const parsedData: Array<{ date: string; shift: string; proctorCount: number }> = [];
+      
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length === 0) continue;
+        
+        let dateValue = row[dateColIndex];
+        let dateStr: string;
+        
+        if (dateValue instanceof Date) {
+          dateStr = dateValue.toISOString().split("T")[0];
+        } else if (typeof dateValue === "number") {
+          const excelDate = XLSX.SSF.parse_date_code(dateValue);
+          dateStr = `${excelDate.y}-${String(excelDate.m).padStart(2, "0")}-${String(excelDate.d).padStart(2, "0")}`;
+        } else if (typeof dateValue === "string" && dateValue.trim()) {
+          const parts = dateValue.split(/[\/\-\.]/);
+          if (parts.length === 3) {
+            if (parts[0].length === 4) {
+              dateStr = `${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`;
+            } else {
+              dateStr = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+            }
+          } else {
+            continue;
+          }
+        } else {
+          continue;
+        }
+        
+        const shiftValue = row[shiftColIndex];
+        const shift = typeof shiftValue === "string" ? shiftValue.trim() : String(shiftValue || "");
+        
+        const proctorValue = row[proctorColIndex];
+        const proctorCount = typeof proctorValue === "number" ? proctorValue : parseInt(String(proctorValue || "0"), 10);
+        
+        if (dateStr && shift && !isNaN(proctorCount)) {
+          parsedData.push({ date: dateStr, shift, proctorCount });
+        }
+      }
+      
+      if (parsedData.length === 0) {
+        return res.status(400).json({ error: "Δεν βρέθηκαν έγκυρα δεδομένα στο αρχείο Excel" });
+      }
+      
+      const appSettings = await storage.getSettings();
+      const shifts = await storage.getShifts();
+      const shiftMap = new Map(shifts.map(s => [s.name.toLowerCase(), s.id]));
+      
+      const validationErrors: Array<{ row: number; error: string }> = [];
+      const processedRosters: Array<{
+        date: string;
+        shiftId: string;
+        totalProctors: number;
+        reserveProctors: number;
+        effectiveCapacity: number;
+        createdBy: string;
+      }> = [];
+      
+      const dateRange = { start: "", end: "" };
+      
+      for (let i = 0; i < parsedData.length; i++) {
+        const { date, shift, proctorCount } = parsedData[i];
+        
+        const shiftId = shiftMap.get(shift.toLowerCase());
+        if (!shiftId) {
+          validationErrors.push({ row: i + 2, error: `Άγνωστη βάρδια: ${shift}` });
+          continue;
+        }
+        
+        if (!dateRange.start || date < dateRange.start) {
+          dateRange.start = date;
+        }
+        if (!dateRange.end || date > dateRange.end) {
+          dateRange.end = date;
+        }
+        
+        const reserveProctors = Math.ceil(proctorCount * (appSettings.reservePercentage / 100));
+        const effectiveProctors = proctorCount - reserveProctors;
+        const effectiveCapacity = effectiveProctors * appSettings.candidatesPerProctor;
+        
+        processedRosters.push({
+          date,
+          shiftId,
+          totalProctors: proctorCount,
+          reserveProctors,
+          effectiveCapacity,
+          createdBy: adminId,
+        });
+      }
+      
+      if (processedRosters.length === 0) {
+        return res.status(400).json({ 
+          error: "Δεν βρέθηκαν έγκυρα δεδομένα επιτηρητών",
+          validationErrors: validationErrors.length > 0 ? validationErrors : undefined,
+        });
+      }
+      
+      if (dateRange.start && dateRange.end) {
+        await storage.deleteProctorRostersByDateRange(dateRange.start, dateRange.end);
+      }
+      
+      const createdRosters = [];
+      for (const roster of processedRosters) {
+        const created = await storage.createProctorRoster(roster);
+        createdRosters.push(created);
+      }
+      
+      res.json({
+        success: true,
+        count: createdRosters.length,
+        dateRange,
+        skippedRows: validationErrors.length > 0 ? validationErrors : undefined,
+      });
+    } catch (error) {
+      console.error("Error uploading Excel proctor rosters:", error);
+      res.status(500).json({ error: "Σφάλμα κατά τη μεταφόρτωση αρχείου Excel" });
     }
   });
 

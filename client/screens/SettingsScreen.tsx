@@ -3,6 +3,8 @@ import { StyleSheet, View, Alert, Switch, Pressable, Platform, Modal } from "rea
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -160,6 +162,41 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleExcelUpload = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel"],
+      });
+      
+      if (result.canceled) return;
+      
+      setIsUploadingRosters(true);
+      const file = result.assets[0];
+      const base64 = await FileSystem.readAsStringAsync(file.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      
+      const response = await authFetch("/api/proctor-rosters/upload-excel", {
+        method: "POST",
+        body: JSON.stringify({ excelData: base64 }),
+      });
+      
+      let message = `Εισήχθησαν ${response.count} εγγραφές επιτηρητών`;
+      if (response.dateRange) {
+        message += ` από ${response.dateRange.start} έως ${response.dateRange.end}`;
+      }
+      if (response.skippedRows && response.skippedRows.length > 0) {
+        message += `\n\nΠαραλείφθηκαν ${response.skippedRows.length} γραμμές με σφάλματα.`;
+      }
+      
+      Alert.alert("Επιτυχία", message);
+    } catch (err: any) {
+      Alert.alert("Σφάλμα", err.message || "Αποτυχία μεταφόρτωσης Excel");
+    } finally {
+      setIsUploadingRosters(false);
+    }
+  };
+
   const handleToggleShift = async (shift: Shift) => {
     try {
       await authFetch(`/api/admin/shifts/${shift.id}`, {
@@ -283,15 +320,25 @@ export default function SettingsScreen() {
               Πρόγραμμα Επιτηρητών
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
-              Ανεβάστε δεδομένα επιτηρητών σε μορφή JSON. Κάθε εγγραφή πρέπει να περιέχει: date (YYYY-MM-DD), shift (morning/midday/afternoon), proctorCount (αριθμός)
+              Ανεβάστε αρχείο Excel με στήλες: Ημερομηνία, Βάρδια (morning/midday/afternoon), Αριθμός Επιτηρητών
             </ThemedText>
-            <Button
-              onPress={handleUploadProctorSchedule}
-              disabled={isUploadingRosters}
-              variant="secondary"
-            >
-              {isUploadingRosters ? "Μεταφόρτωση..." : "Εισαγωγή Προγράμματος"}
-            </Button>
+            <View style={{ flexDirection: "row", gap: Spacing.sm }}>
+              <Button
+                onPress={handleExcelUpload}
+                disabled={isUploadingRosters}
+                style={{ flex: 1 }}
+              >
+                {isUploadingRosters ? "Μεταφόρτωση..." : "Ανέβασμα Excel"}
+              </Button>
+              <Button
+                onPress={handleUploadProctorSchedule}
+                disabled={isUploadingRosters}
+                variant="secondary"
+                style={{ flex: 1 }}
+              >
+                JSON
+              </Button>
+            </View>
           </View>
         </Card>
 
