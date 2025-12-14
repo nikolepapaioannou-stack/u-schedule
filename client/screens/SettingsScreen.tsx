@@ -58,8 +58,8 @@ export default function SettingsScreen() {
   const fetchSettings = useCallback(async () => {
     try {
       const [settingsData, shiftsData] = await Promise.all([
-        authFetch("/api/admin/settings"),
-        authFetch("/api/admin/shifts"),
+        authFetch("/api/settings"),
+        authFetch("/api/shifts"),
       ]);
 
       if (settingsData) {
@@ -114,7 +114,7 @@ export default function SettingsScreen() {
 
     setIsSaving(true);
     try {
-      await authFetch("/api/admin/settings", {
+      await authFetch("/api/settings", {
         method: "PUT",
         body: JSON.stringify({
           workingDaysRule: workingDaysNum,
@@ -199,7 +199,7 @@ export default function SettingsScreen() {
 
   const handleToggleShift = async (shift: Shift) => {
     try {
-      await authFetch(`/api/admin/shifts/${shift.id}`, {
+      await authFetch(`/api/shifts/${shift.id}`, {
         method: "PUT",
         body: JSON.stringify({ isActive: !shift.isActive }),
       });
