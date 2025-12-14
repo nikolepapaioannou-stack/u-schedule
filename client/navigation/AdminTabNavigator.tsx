@@ -1,9 +1,9 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet } from "react-native";
 import { useTheme } from "@/hooks/useTheme";
+import { AppIcon } from "@/components/AppIcon";
 
 import AdminDashboardScreen from "@/screens/AdminDashboardScreen";
 import PendingApprovalsScreen from "@/screens/PendingApprovalsScreen";
@@ -54,7 +54,7 @@ export default function AdminTabNavigator() {
         options={{
           title: "Πίνακας",
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="view-grid-outline" size={size} color={color} />
+            <AppIcon name="view-grid-outline" size={size} color={color} />
           ),
         }}
       />
@@ -64,7 +64,7 @@ export default function AdminTabNavigator() {
         options={{
           title: "Εκκρεμείς",
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="clock-outline" size={size} color={color} />
+            <AppIcon name="clock-outline" size={size} color={color} />
           ),
         }}
       />
@@ -74,7 +74,7 @@ export default function AdminTabNavigator() {
         options={{
           title: "Ημερολόγιο",
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="calendar-outline" size={size} color={color} />
+            <AppIcon name="calendar-outline" size={size} color={color} />
           ),
         }}
       />
@@ -84,7 +84,7 @@ export default function AdminTabNavigator() {
         options={{
           title: "Ρυθμίσεις",
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="cog-outline" size={size} color={color} />
+            <AppIcon name="cog-outline" size={size} color={color} />
           ),
         }}
       />

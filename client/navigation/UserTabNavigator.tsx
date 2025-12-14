@@ -1,9 +1,9 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet } from "react-native";
 import { useTheme } from "@/hooks/useTheme";
+import { AppIcon } from "@/components/AppIcon";
 
 import SearchScreen from "@/screens/SearchScreen";
 import MyBookingsScreen from "@/screens/MyBookingsScreen";
@@ -54,7 +54,7 @@ export default function UserTabNavigator() {
         options={{
           title: "Αναζήτηση",
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="magnify" size={size} color={color} />
+            <AppIcon name="magnify" size={size} color={color} />
           ),
         }}
       />
@@ -64,7 +64,7 @@ export default function UserTabNavigator() {
         options={{
           title: "Κρατήσεις",
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="calendar-outline" size={size} color={color} />
+            <AppIcon name="calendar-outline" size={size} color={color} />
           ),
         }}
       />
@@ -74,7 +74,7 @@ export default function UserTabNavigator() {
         options={{
           title: "Ειδοποιήσεις",
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="bell-outline" size={size} color={color} />
+            <AppIcon name="bell-outline" size={size} color={color} />
           ),
         }}
       />
@@ -84,7 +84,7 @@ export default function UserTabNavigator() {
         options={{
           title: "Προφίλ",
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="account-outline" size={size} color={color} />
+            <AppIcon name="account-outline" size={size} color={color} />
           ),
         }}
       />
