@@ -64,15 +64,30 @@ export default function AdminDashboardScreen() {
       ]);
 
       const allBookings = bookingsData || [];
-      const today = new Date().toISOString().split("T")[0];
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-      const todayBookings = allBookings.filter((b: any) => b.bookingDate === today).length;
-      const pendingApprovals = allBookings.filter((b: any) => b.status === "pending").length;
-      const weekBookings = allBookings.filter((b: any) => b.bookingDate >= weekAgo).length;
-      const totalApproved = allBookings.filter((b: any) => b.status === "approved").length;
+      if (statsData) {
+        setStats({
+          todayBookings: statsData.todayBookings,
+          pendingApprovals: statsData.pendingApprovals,
+          weekBookings: statsData.weekBookings,
+          totalApproved: statsData.totalApproved,
+        });
+      } else {
+        const today = new Date().toISOString().split("T")[0];
+        const weekStart = new Date();
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        const weekStartStr = weekStart.toISOString().split("T")[0];
+        const weekEndStr = weekEnd.toISOString().split("T")[0];
 
-      setStats(statsData || { todayBookings, pendingApprovals, weekBookings, totalApproved });
+        const todayBookings = allBookings.filter((b: any) => b.bookingDate === today && b.status === "approved").length;
+        const pendingApprovals = allBookings.filter((b: any) => b.status === "pending").length;
+        const weekBookings = allBookings.filter((b: any) => b.bookingDate >= weekStartStr && b.bookingDate <= weekEndStr && b.status === "approved").length;
+        const totalApproved = allBookings.filter((b: any) => b.status === "approved").length;
+
+        setStats({ todayBookings, pendingApprovals, weekBookings, totalApproved });
+      }
       
       const recent = allBookings
         .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
