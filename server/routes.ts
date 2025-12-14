@@ -44,7 +44,7 @@ async function requireAuth(req: Request, res: Response): Promise<string | null> 
     res.status(401).json({ error: "Απαιτείται σύνδεση" });
     return null;
   }
-  const userId = validateSession(token);
+  const userId = await validateSession(token);
   if (!userId) {
     res.status(401).json({ error: "Μη έγκυρη συνεδρία" });
     return null;
@@ -125,6 +125,7 @@ async function getAvailableSlots(
     if (!isWeekend(current) && !closedDatesSet.has(dateStr)) {
       const hourlyCapacities = await storage.getHourlyCapacitiesByDate(dateStr);
       const hourlyCapacityMap = new Map(hourlyCapacities.map(hc => [hc.hour, hc]));
+      console.log(`[DEBUG] Date: ${dateStr}, hourlyCapacities count: ${hourlyCapacities.length}`);
       
       for (const shift of allShifts) {
         const existingBookings = await storage.getBookingsByDateAndShift(dateStr, shift.id);
@@ -145,6 +146,7 @@ async function getAvailableSlots(
           const effectiveCapacity = hourlyCapacity?.effectiveCapacity || shift.maxCandidates;
           const hourAvailable = effectiveCapacity - hourBookedCandidates;
           
+          console.log(`[DEBUG] ${dateStr} ${shift.name} hour ${hour}: capacity=${effectiveCapacity}, booked=${hourBookedCandidates}, available=${hourAvailable}`);
           
           if (hourAvailable > 0) {
             hourlySlots.push({
@@ -155,6 +157,7 @@ async function getAvailableSlots(
             });
           }
         }
+        console.log(`[DEBUG] ${dateStr} ${shift.name}: hourlySlots.length = ${hourlySlots.length}`);
         
         
         if (availableCapacity > 0 || hourlySlots.length > 0) {
