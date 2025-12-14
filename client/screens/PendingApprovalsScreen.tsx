@@ -199,7 +199,7 @@ export default function PendingApprovalsScreen() {
           >
             <View style={styles.buttonContent}>
               <MaterialCommunityIcons name="check" size={18} color="#fff" />
-              <ThemedText type="button" style={{ color: "#fff", marginLeft: Spacing.xs }}>
+              <ThemedText type="body" style={{ color: "#fff", marginLeft: Spacing.xs }}>
                 {isProcessing ? "..." : "Έγκριση"}
               </ThemedText>
             </View>
@@ -211,7 +211,7 @@ export default function PendingApprovalsScreen() {
           >
             <View style={styles.buttonContent}>
               <MaterialCommunityIcons name="close" size={18} color="#fff" />
-              <ThemedText type="button" style={{ color: "#fff", marginLeft: Spacing.xs }}>
+              <ThemedText type="body" style={{ color: "#fff", marginLeft: Spacing.xs }}>
                 Απόρριψη
               </ThemedText>
             </View>
