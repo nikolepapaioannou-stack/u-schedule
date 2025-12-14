@@ -15,6 +15,7 @@ import {
   type InsertWaitlist,
   type PushToken,
   type ProctorRoster,
+  type ProctorHourlyCapacity,
   users,
   shifts,
   closedDates,
@@ -24,6 +25,7 @@ import {
   waitlist,
   pushTokens,
   proctorRosters,
+  proctorHourlyCapacities,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -87,6 +89,15 @@ export interface IStorage {
   getProctorRostersInRange(startDate: string, endDate: string): Promise<ProctorRoster[]>;
   createProctorRoster(roster: Omit<ProctorRoster, "id" | "createdAt">): Promise<ProctorRoster>;
   deleteProctorRostersByDateRange(startDate: string, endDate: string): Promise<void>;
+  
+  getHourlyCapacities(): Promise<ProctorHourlyCapacity[]>;
+  getHourlyCapacityByDateAndHour(date: string, hour: number): Promise<ProctorHourlyCapacity | undefined>;
+  getHourlyCapacitiesInRange(startDate: string, endDate: string): Promise<ProctorHourlyCapacity[]>;
+  getHourlyCapacitiesByDate(date: string): Promise<ProctorHourlyCapacity[]>;
+  createHourlyCapacity(capacity: Omit<ProctorHourlyCapacity, "id" | "createdAt">): Promise<ProctorHourlyCapacity>;
+  deleteHourlyCapacitiesByDateRange(startDate: string, endDate: string): Promise<void>;
+  
+  getBookingsByDateAndHour(date: string, hour: number): Promise<Booking[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -390,6 +401,57 @@ export class DatabaseStorage implements IStorage {
       and(
         gte(proctorRosters.date, startDate),
         lte(proctorRosters.date, endDate)
+      )
+    );
+  }
+
+  async getHourlyCapacities(): Promise<ProctorHourlyCapacity[]> {
+    return db.select().from(proctorHourlyCapacities);
+  }
+
+  async getHourlyCapacityByDateAndHour(date: string, hour: number): Promise<ProctorHourlyCapacity | undefined> {
+    const result = await db.select().from(proctorHourlyCapacities).where(
+      and(eq(proctorHourlyCapacities.date, date), eq(proctorHourlyCapacities.hour, hour))
+    );
+    return result[0];
+  }
+
+  async getHourlyCapacitiesInRange(startDate: string, endDate: string): Promise<ProctorHourlyCapacity[]> {
+    return db.select().from(proctorHourlyCapacities).where(
+      and(
+        gte(proctorHourlyCapacities.date, startDate),
+        lte(proctorHourlyCapacities.date, endDate)
+      )
+    );
+  }
+
+  async getHourlyCapacitiesByDate(date: string): Promise<ProctorHourlyCapacity[]> {
+    return db.select().from(proctorHourlyCapacities).where(
+      eq(proctorHourlyCapacities.date, date)
+    );
+  }
+
+  async createHourlyCapacity(capacity: Omit<ProctorHourlyCapacity, "id" | "createdAt">): Promise<ProctorHourlyCapacity> {
+    const result = await db.insert(proctorHourlyCapacities).values(capacity).returning();
+    return result[0];
+  }
+
+  async deleteHourlyCapacitiesByDateRange(startDate: string, endDate: string): Promise<void> {
+    await db.delete(proctorHourlyCapacities).where(
+      and(
+        gte(proctorHourlyCapacities.date, startDate),
+        lte(proctorHourlyCapacities.date, endDate)
+      )
+    );
+  }
+
+  async getBookingsByDateAndHour(date: string, hour: number): Promise<Booking[]> {
+    return db.select().from(bookings).where(
+      and(
+        eq(bookings.bookingDate, date),
+        eq(bookings.examStartHour, hour),
+        not(eq(bookings.status, "rejected")),
+        not(eq(bookings.status, "expired"))
       )
     );
   }

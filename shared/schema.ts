@@ -61,6 +61,19 @@ export const proctorRosters = pgTable("proctor_rosters", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const proctorHourlyCapacities = pgTable("proctor_hourly_capacities", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  date: date("date").notNull(),
+  hour: integer("hour").notNull(),
+  totalProctors: integer("total_proctors").notNull(),
+  reserveProctors: integer("reserve_proctors").notNull().default(0),
+  effectiveCapacity: integer("effective_capacity").notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const bookings = pgTable("bookings", {
   id: varchar("id")
     .primaryKey()
@@ -71,6 +84,7 @@ export const bookings = pgTable("bookings", {
   courseEndDate: date("course_end_date").notNull(),
   preferredShift: text("preferred_shift").notNull(),
   shiftId: varchar("shift_id").references(() => shifts.id),
+  examStartHour: integer("exam_start_hour"),
   bookingDate: date("booking_date").notNull(),
   status: text("status").notNull().default("pending"),
   holdExpiresAt: timestamp("hold_expires_at"),
@@ -154,6 +168,7 @@ export const insertBookingSchema = createInsertSchema(bookings).pick({
   preferredShift: true,
   bookingDate: true,
   shiftId: true,
+  examStartHour: true,
   notes: true,
   isSplit: true,
   splitGroupId: true,
@@ -195,3 +210,4 @@ export type Waitlist = typeof waitlist.$inferSelect;
 export type InsertWaitlist = z.infer<typeof insertWaitlistSchema>;
 export type PushToken = typeof pushTokens.$inferSelect;
 export type ProctorRoster = typeof proctorRosters.$inferSelect;
+export type ProctorHourlyCapacity = typeof proctorHourlyCapacities.$inferSelect;
