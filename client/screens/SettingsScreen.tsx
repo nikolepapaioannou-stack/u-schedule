@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useRef } from "react";
-import { StyleSheet, View, Alert, Switch, Pressable, Platform } from "react-native";
+import React, { useState, useCallback } from "react";
+import { StyleSheet, View, Alert, Switch, Pressable, Platform, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
@@ -15,7 +15,6 @@ import { HeaderTitle } from "@/components/HeaderTitle";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth, useAuthenticatedFetch } from "@/lib/auth";
-import { useWebSocket, WebSocketEvent } from "@/lib/websocket";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
 interface Settings {
@@ -54,20 +53,6 @@ export default function SettingsScreen() {
   const [reservePercentage, setReservePercentage] = useState("");
   const [isUploadingRosters, setIsUploadingRosters] = useState(false);
   const [hasProctorRosters, setHasProctorRosters] = useState(false);
-  const isSavingRef = useRef(false);
-
-  const handleWebSocketEvent = useCallback((event: WebSocketEvent) => {
-    if (event.type === 'settings:updated' && !isSavingRef.current) {
-      setWorkingDays(String(event.settings.workingDaysRule));
-      setHoldDuration(String(event.settings.holdDurationMinutes));
-      setMaxCandidates(String(event.settings.maxCandidatesPerDay));
-      setCandidatesPerProctor(String(event.settings.candidatesPerProctor));
-      setReservePercentage(String(event.settings.reservePercentage));
-      console.log('[Settings] Received real-time update from another admin');
-    }
-  }, []);
-
-  useWebSocket(handleWebSocketEvent);
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -142,7 +127,6 @@ export default function SettingsScreen() {
     }
 
     setIsSaving(true);
-    isSavingRef.current = true;
     try {
       await authFetch("/api/settings", {
         method: "PUT",
@@ -159,7 +143,6 @@ export default function SettingsScreen() {
       Alert.alert("Σφάλμα", err.message || "Αποτυχία αποθήκευσης");
     } finally {
       setIsSaving(false);
-      isSavingRef.current = false;
     }
   };
 
@@ -271,18 +254,24 @@ export default function SettingsScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      "Αποσύνδεση",
-      "Είστε σίγουροι ότι θέλετε να αποσυνδεθείτε;",
-      [
-        { text: "Ακύρωση", style: "cancel" },
-        {
-          text: "Αποσύνδεση",
-          style: "destructive",
-          onPress: logout,
-        },
-      ]
-    );
+    if (Platform.OS === "web") {
+      if (window.confirm("Είστε σίγουροι ότι θέλετε να αποσυνδεθείτε;")) {
+        logout();
+      }
+    } else {
+      Alert.alert(
+        "Αποσύνδεση",
+        "Είστε σίγουροι ότι θέλετε να αποσυνδεθείτε;",
+        [
+          { text: "Ακύρωση", style: "cancel" },
+          {
+            text: "Αποσύνδεση",
+            style: "destructive",
+            onPress: logout,
+          },
+        ]
+      );
+    }
   };
 
   const getShiftLabel = (name: string) => {

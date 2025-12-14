@@ -12,7 +12,6 @@ import { Button } from "@/components/Button";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuthenticatedFetch } from "@/lib/auth";
-import { useBookingWebSocket } from "@/lib/websocket";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -66,15 +65,6 @@ export default function PendingApprovalsScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchPendingBookings();
-    }, [fetchPendingBookings])
-  );
-
-  useBookingWebSocket(
-    useCallback((event) => {
-      if (event.type === 'booking:submitted') {
-        console.log('[PendingApprovals] New booking submitted, refreshing...');
-        fetchPendingBookings();
-      }
     }, [fetchPendingBookings])
   );
 
