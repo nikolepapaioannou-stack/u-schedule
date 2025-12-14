@@ -86,6 +86,13 @@ function addWorkingDays(startDate: Date, days: number, closedDates: Set<string>)
   return current;
 }
 
+interface HourlySlot {
+  hour: number;
+  effectiveCapacity: number;
+  bookedCandidates: number;
+  availableCapacity: number;
+}
+
 async function getAvailableSlots(
   startDate: Date,
   endDate: Date,
@@ -106,6 +113,7 @@ async function getAvailableSlots(
     availableCapacity: number;
     priority: number;
     isSplit: boolean;
+    hourlySlots: HourlySlot[];
     splitInfo?: { dates: string[]; candidatesPerSlot: number[] };
   }> = [];
   
@@ -117,17 +125,45 @@ async function getAvailableSlots(
     const dateStr = current.toISOString().split("T")[0];
     
     if (!isWeekend(current) && !closedDatesSet.has(dateStr)) {
+      const hourlyCapacities = await storage.getHourlyCapacitiesByDate(dateStr);
+      const hourlyCapacityMap = new Map(hourlyCapacities.map(hc => [hc.hour, hc]));
+      
       for (const shift of allShifts) {
         const existingBookings = await storage.getBookingsByDateAndShift(dateStr, shift.id);
         const bookedCandidates = existingBookings.reduce((sum, b) => sum + b.candidateCount, 0);
         const availableCapacity = shift.maxCandidates - bookedCandidates;
         
-        if (availableCapacity > 0) {
+        const startHour = parseInt(shift.startTime.split(":")[0]);
+        const endHour = parseInt(shift.endTime.split(":")[0]);
+        const hourlySlots: HourlySlot[] = [];
+        
+        for (let hour = startHour; hour < endHour; hour++) {
+          const hourlyCapacity = hourlyCapacityMap.get(hour);
+          const hourBookings = await storage.getBookingsByDateAndHour(dateStr, hour);
+          const hourBookedCandidates = hourBookings.reduce((sum, b) => sum + b.candidateCount, 0);
+          
+          // Use hourly capacity if configured, otherwise fall back to shift's max capacity
+          const effectiveCapacity = hourlyCapacity?.effectiveCapacity ?? shift.maxCandidates;
+          const hourAvailable = effectiveCapacity - hourBookedCandidates;
+          
+          if (hourAvailable > 0) {
+            hourlySlots.push({
+              hour,
+              effectiveCapacity,
+              bookedCandidates: hourBookedCandidates,
+              availableCapacity: hourAvailable,
+            });
+          }
+        }
+        
+        if (availableCapacity > 0 || hourlySlots.length > 0) {
           let priority = 3;
           
-          if (availableCapacity >= candidateCount && shift.name === preferredShift) {
+          const hasAvailableHour = hourlySlots.some(hs => hs.availableCapacity >= candidateCount);
+          
+          if (hasAvailableHour && shift.name === preferredShift) {
             priority = 1;
-          } else if (availableCapacity >= candidateCount) {
+          } else if (hasAvailableHour) {
             priority = 2;
           }
           
@@ -139,7 +175,8 @@ async function getAvailableSlots(
             endTime: shift.endTime,
             availableCapacity,
             priority,
-            isSplit: availableCapacity < candidateCount,
+            isSplit: !hasAvailableHour && candidateCount > 0,
+            hourlySlots,
           });
         }
       }

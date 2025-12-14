@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, FlatList, RefreshControl, ActivityIndicator } from "react-native";
+import { StyleSheet, View, FlatList, RefreshControl, ActivityIndicator, Pressable } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -18,6 +18,13 @@ import { RootStackParamList } from "@/navigation/RootStackNavigator";
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, "AvailableSlots">;
 type RoutePropType = RouteProp<RootStackParamList, "AvailableSlots">;
 
+interface HourlySlot {
+  hour: number;
+  effectiveCapacity: number;
+  bookedCandidates: number;
+  availableCapacity: number;
+}
+
 interface Slot {
   date: string;
   shiftId: string;
@@ -27,6 +34,7 @@ interface Slot {
   availableCapacity: number;
   priority: number;
   isSplit: boolean;
+  hourlySlots: HourlySlot[];
 }
 
 const PRIORITY_CONFIG = {
@@ -56,6 +64,8 @@ export default function AvailableSlotsScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isBooking, setIsBooking] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [expandedSlot, setExpandedSlot] = useState<string | null>(null);
+  const [selectedHour, setSelectedHour] = useState<{ slotKey: string; hour: number } | null>(null);
 
   useEffect(() => {
     fetchSlots();
@@ -77,8 +87,9 @@ export default function AvailableSlotsScreen() {
     }
   }
 
-  async function handleHoldSlot(slot: Slot) {
-    setIsBooking(slot.shiftId + slot.date);
+  async function handleHoldSlot(slot: Slot, examStartHour: number) {
+    const slotKey = slot.shiftId + slot.date;
+    setIsBooking(slotKey);
     try {
       const booking = await authFetch("/api/bookings", {
         method: "POST",
@@ -89,6 +100,7 @@ export default function AvailableSlotsScreen() {
           preferredShift,
           bookingDate: slot.date,
           shiftId: slot.shiftId,
+          examStartHour,
           isSplit: slot.isSplit,
         }),
       });
@@ -99,6 +111,20 @@ export default function AvailableSlotsScreen() {
     } finally {
       setIsBooking(null);
     }
+  }
+
+  function toggleSlotExpansion(slotKey: string) {
+    if (expandedSlot === slotKey) {
+      setExpandedSlot(null);
+      setSelectedHour(null);
+    } else {
+      setExpandedSlot(slotKey);
+      setSelectedHour(null);
+    }
+  }
+
+  function selectHour(slotKey: string, hour: number) {
+    setSelectedHour({ slotKey, hour });
   }
 
   const formatDate = (dateStr: string) => {
@@ -112,29 +138,41 @@ export default function AvailableSlotsScreen() {
   const renderSlotItem = ({ item }: { item: Slot }) => {
     const config = PRIORITY_CONFIG[item.priority as keyof typeof PRIORITY_CONFIG] || PRIORITY_CONFIG[3];
     const priorityColor = theme[config.color as keyof typeof theme] as string;
-    const isCurrentBooking = isBooking === item.shiftId + item.date;
+    const slotKey = item.shiftId + item.date;
+    const isCurrentBooking = isBooking === slotKey;
+    const isExpanded = expandedSlot === slotKey;
+    const currentSelectedHour = selectedHour?.slotKey === slotKey ? selectedHour.hour : null;
 
     return (
       <Card elevation={1} style={[styles.slotCard, { borderLeftColor: priorityColor, borderLeftWidth: 4 }]}>
-        <View style={styles.cardHeader}>
-          <View style={{ flex: 1 }}>
-            <ThemedText type="h4">{formatDate(item.date)}</ThemedText>
-            <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
-              {SHIFT_LABELS[item.shiftName as keyof typeof SHIFT_LABELS]} ({item.startTime} - {item.endTime})
-            </ThemedText>
+        <Pressable onPress={() => toggleSlotExpansion(slotKey)}>
+          <View style={styles.cardHeader}>
+            <View style={{ flex: 1 }}>
+              <ThemedText type="h4">{formatDate(item.date)}</ThemedText>
+              <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
+                {SHIFT_LABELS[item.shiftName as keyof typeof SHIFT_LABELS]} ({item.startTime} - {item.endTime})
+              </ThemedText>
+            </View>
+            <View style={styles.headerRight}>
+              <View style={[styles.badge, { backgroundColor: priorityColor + "20" }]}>
+                <ThemedText type="caption" style={{ color: priorityColor, fontWeight: "600" }}>
+                  {config.badge}
+                </ThemedText>
+              </View>
+              <MaterialCommunityIcons 
+                name={isExpanded ? "chevron-up" : "chevron-down"} 
+                size={24} 
+                color={theme.textSecondary} 
+              />
+            </View>
           </View>
-          <View style={[styles.badge, { backgroundColor: priorityColor + "20" }]}>
-            <ThemedText type="caption" style={{ color: priorityColor, fontWeight: "600" }}>
-              {config.badge}
-            </ThemedText>
-          </View>
-        </View>
+        </Pressable>
 
         <View style={styles.cardBody}>
           <View style={styles.infoRow}>
-            <MaterialCommunityIcons name="account-group-outline" size={16} color={theme.textSecondary} />
+            <MaterialCommunityIcons name="clock-outline" size={16} color={theme.textSecondary} />
             <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
-              Διαθέσιμες θέσεις: {item.availableCapacity}
+              {(item.hourlySlots ?? []).length} διαθέσιμες ώρες
             </ThemedText>
           </View>
 
@@ -148,13 +186,78 @@ export default function AvailableSlotsScreen() {
           ) : null}
         </View>
 
-        <Button
-          onPress={() => handleHoldSlot(item)}
-          disabled={isCurrentBooking}
-          style={{ marginTop: Spacing.md }}
-        >
-          {isCurrentBooking ? "Κράτηση..." : "Κράτηση Θέσης"}
-        </Button>
+        {isExpanded ? (
+          <View style={styles.hourlyContainer}>
+            <ThemedText type="small" style={[styles.hourlyLabel, { color: theme.textSecondary }]}>
+              Επιλέξτε ώρα έναρξης εξέτασης:
+            </ThemedText>
+            <View style={styles.hourlyGrid}>
+              {(item.hourlySlots ?? []).map((hourSlot) => {
+                const isSelected = currentSelectedHour === hourSlot.hour;
+                const hasCapacity = hourSlot.availableCapacity >= candidateCount;
+                
+                return (
+                  <Pressable
+                    key={hourSlot.hour}
+                    style={[
+                      styles.hourButton,
+                      {
+                        backgroundColor: isSelected 
+                          ? theme.primary 
+                          : hasCapacity 
+                            ? theme.backgroundDefault 
+                            : theme.backgroundSecondary,
+                        borderColor: isSelected 
+                          ? theme.primary 
+                          : hasCapacity 
+                            ? theme.border 
+                            : theme.border,
+                        opacity: hasCapacity ? 1 : 0.5,
+                      },
+                    ]}
+                    onPress={() => hasCapacity && selectHour(slotKey, hourSlot.hour)}
+                    disabled={!hasCapacity}
+                  >
+                    <ThemedText
+                      type="body"
+                      style={{
+                        color: isSelected ? "#FFFFFF" : theme.text,
+                        fontWeight: "600",
+                      }}
+                    >
+                      {hourSlot.hour.toString().padStart(2, "0")}:00
+                    </ThemedText>
+                    <ThemedText
+                      type="caption"
+                      style={{
+                        color: isSelected ? "#FFFFFF" : theme.textSecondary,
+                      }}
+                    >
+                      {hourSlot.availableCapacity} θέσεις
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+            
+            {currentSelectedHour !== null ? (
+              <Button
+                onPress={() => handleHoldSlot(item, currentSelectedHour)}
+                disabled={isCurrentBooking}
+                style={{ marginTop: Spacing.md }}
+              >
+                {isCurrentBooking ? "Κράτηση..." : `Κράτηση στις ${currentSelectedHour.toString().padStart(2, "0")}:00`}
+              </Button>
+            ) : (
+              <View style={[styles.selectHourHint, { backgroundColor: theme.backgroundSecondary }]}>
+                <MaterialCommunityIcons name="gesture-tap" size={16} color={theme.textSecondary} />
+                <ThemedText type="small" style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}>
+                  Πατήστε σε μια ώρα για να συνεχίσετε
+                </ThemedText>
+              </View>
+            )}
+          </View>
+        ) : null}
       </Card>
     );
   };
@@ -271,6 +374,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
   },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
   badge: {
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
@@ -288,6 +396,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.sm,
+  },
+  hourlyContainer: {
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.1)",
+  },
+  hourlyLabel: {
+    marginBottom: Spacing.sm,
+  },
+  hourlyGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+  },
+  hourButton: {
+    width: "30%",
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+  },
+  selectHourHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.md,
   },
   emptyState: {
     flex: 1,
