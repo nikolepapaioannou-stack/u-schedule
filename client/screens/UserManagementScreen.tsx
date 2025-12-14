@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { StyleSheet, View, Alert, Pressable, Modal, FlatList, ActivityIndicator } from "react-native";
+import { StyleSheet, View, Alert, Pressable, Modal, FlatList, ActivityIndicator, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
@@ -54,6 +54,9 @@ export default function UserManagementScreen() {
   const [newUgrId, setNewUgrId] = useState("");
   const [newRole, setNewRole] = useState<UserRole>("user");
   const [isCreating, setIsCreating] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const isSuperAdmin = currentUser?.role === "superadmin";
 
@@ -148,30 +151,46 @@ export default function UserManagementScreen() {
     }
   };
 
-  const handleDeleteUser = async (user: User) => {
-    Alert.alert(
-      "Διαγραφή Χρήστη",
-      `Είστε σίγουροι ότι θέλετε να διαγράψετε τον χρήστη ${user.email};`,
-      [
-        { text: "Ακύρωση", style: "cancel" },
-        {
-          text: "Διαγραφή",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await authFetch(`/api/admin/users/${user.id}`, {
-                method: "DELETE",
-              });
-              Alert.alert("Επιτυχία", "Ο χρήστης διαγράφηκε");
-              fetchUsers();
-            } catch (error: any) {
-              console.error("Failed to delete user:", error);
-              Alert.alert("Σφάλμα", error.message || "Δεν ήταν δυνατή η διαγραφή του χρήστη");
-            }
+  const handleDeleteUser = (user: User) => {
+    if (Platform.OS === "web") {
+      setUserToDelete(user);
+      setShowDeleteModal(true);
+    } else {
+      Alert.alert(
+        "Διαγραφή Χρήστη",
+        `Είστε σίγουροι ότι θέλετε να διαγράψετε τον χρήστη ${user.email};`,
+        [
+          { text: "Ακύρωση", style: "cancel" },
+          {
+            text: "Διαγραφή",
+            style: "destructive",
+            onPress: () => confirmDeleteUser(user),
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
+  };
+
+  const confirmDeleteUser = async (user: User) => {
+    setIsDeleting(true);
+    try {
+      await authFetch(`/api/admin/users/${user.id}`, {
+        method: "DELETE",
+      });
+      if (Platform.OS !== "web") {
+        Alert.alert("Επιτυχία", "Ο χρήστης διαγράφηκε");
+      }
+      fetchUsers();
+    } catch (error: any) {
+      console.error("Failed to delete user:", error);
+      if (Platform.OS !== "web") {
+        Alert.alert("Σφάλμα", error.message || "Δεν ήταν δυνατή η διαγραφή του χρήστη");
+      }
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      setUserToDelete(null);
+    }
   };
 
   const renderRoleBadge = (role: UserRole) => {
@@ -419,6 +438,58 @@ export default function UserManagementScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={showDeleteModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => {
+          setShowDeleteModal(false);
+          setUserToDelete(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.roleModalContent, { backgroundColor: theme.backgroundDefault }]}>
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Διαγραφή Χρήστη</ThemedText>
+              <Pressable onPress={() => {
+                setShowDeleteModal(false);
+                setUserToDelete(null);
+              }}>
+                <Feather name="x" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+
+            {userToDelete ? (
+              <>
+                <ThemedText style={styles.deleteWarningText}>
+                  Είστε σίγουροι ότι θέλετε να διαγράψετε τον χρήστη{"\n"}
+                  <ThemedText style={styles.deleteUserEmail}>{userToDelete.email}</ThemedText>;
+                </ThemedText>
+                <View style={styles.deleteActions}>
+                  <Button
+                    variant="secondary"
+                    onPress={() => {
+                      setShowDeleteModal(false);
+                      setUserToDelete(null);
+                    }}
+                    style={styles.cancelButton}
+                  >
+                    Ακύρωση
+                  </Button>
+                  <Button
+                    onPress={() => confirmDeleteUser(userToDelete)}
+                    disabled={isDeleting}
+                    style={[styles.deleteButton, { backgroundColor: "#D32F2F" }]}
+                  >
+                    {isDeleting ? "Διαγραφή..." : "Διαγραφή"}
+                  </Button>
+                </View>
+              </>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -582,5 +653,25 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
+  },
+  deleteWarningText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: Spacing.lg,
+    lineHeight: 24,
+  },
+  deleteUserEmail: {
+    fontWeight: "700",
+  },
+  deleteActions: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    justifyContent: "center",
+  },
+  cancelButton: {
+    flex: 1,
+  },
+  deleteButton: {
+    flex: 1,
   },
 });
