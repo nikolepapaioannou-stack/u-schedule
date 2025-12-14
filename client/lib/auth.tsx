@@ -157,6 +157,8 @@ export function useAuth() {
 }
 
 export function useAuthenticatedFetch() {
+  const { logout } = useAuth();
+  
   return useCallback(async (path: string, options: RequestInit = {}, retries = 2) => {
     // Always read token directly from AsyncStorage to ensure we have the latest
     let currentToken: string | null = null;
@@ -167,6 +169,8 @@ export function useAuthenticatedFetch() {
     }
     
     if (!currentToken) {
+      // No token - force logout to redirect to login
+      await logout();
       throw new Error("Δεν υπάρχει συνεδρία - παρακαλώ συνδεθείτε ξανά");
     }
     
@@ -183,6 +187,12 @@ export function useAuthenticatedFetch() {
             "Content-Type": "application/json",
           },
         });
+        
+        // Handle 401 - session expired or invalid
+        if (response.status === 401) {
+          await logout();
+          throw new Error("Η συνεδρία έληξε - παρακαλώ συνδεθείτε ξανά");
+        }
         
         if (!response.ok) {
           const error = await response.json().catch(() => ({ error: "Σφάλμα δικτύου" }));
@@ -207,5 +217,5 @@ export function useAuthenticatedFetch() {
     }
     
     throw lastError || new Error("Σφάλμα αιτήματος");
-  }, []);
+  }, [logout]);
 }
