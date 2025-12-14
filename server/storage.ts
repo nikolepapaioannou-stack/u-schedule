@@ -14,6 +14,7 @@ import {
   type Waitlist,
   type InsertWaitlist,
   type PushToken,
+  type ProctorRoster,
   users,
   shifts,
   closedDates,
@@ -22,6 +23,7 @@ import {
   notifications,
   waitlist,
   pushTokens,
+  proctorRosters,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -52,6 +54,7 @@ export interface IStorage {
   updateSettings(settingsData: Partial<Settings>): Promise<Settings>;
   
   getBookings(): Promise<Booking[]>;
+  getBooking(id: string): Promise<Booking | undefined>;
   getBookingsByUserId(userId: string): Promise<Booking[]>;
   getBookingByDepartmentId(departmentId: string): Promise<Booking | undefined>;
   getBookingsByDate(date: string): Promise<Booking[]>;
@@ -78,6 +81,12 @@ export interface IStorage {
   getAllPushTokens(): Promise<PushToken[]>;
   savePushToken(userId: string, token: string, platform?: string): Promise<PushToken>;
   deletePushToken(userId: string): Promise<void>;
+  
+  getProctorRosters(): Promise<ProctorRoster[]>;
+  getProctorRosterByDateAndShift(date: string, shiftId: string): Promise<ProctorRoster | undefined>;
+  getProctorRostersInRange(startDate: string, endDate: string): Promise<ProctorRoster[]>;
+  createProctorRoster(roster: Omit<ProctorRoster, "id" | "createdAt">): Promise<ProctorRoster>;
+  deleteProctorRostersByDateRange(startDate: string, endDate: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -169,6 +178,11 @@ export class DatabaseStorage implements IStorage {
 
   async getBookings(): Promise<Booking[]> {
     return db.select().from(bookings);
+  }
+
+  async getBooking(id: string): Promise<Booking | undefined> {
+    const result = await db.select().from(bookings).where(eq(bookings.id, id));
+    return result[0];
   }
 
   async getBookingsByUserId(userId: string): Promise<Booking[]> {
@@ -344,6 +358,40 @@ export class DatabaseStorage implements IStorage {
 
   async deletePushToken(userId: string): Promise<void> {
     await db.delete(pushTokens).where(eq(pushTokens.userId, userId));
+  }
+
+  async getProctorRosters(): Promise<ProctorRoster[]> {
+    return db.select().from(proctorRosters);
+  }
+
+  async getProctorRosterByDateAndShift(date: string, shiftId: string): Promise<ProctorRoster | undefined> {
+    const result = await db.select().from(proctorRosters).where(
+      and(eq(proctorRosters.date, date), eq(proctorRosters.shiftId, shiftId))
+    );
+    return result[0];
+  }
+
+  async getProctorRostersInRange(startDate: string, endDate: string): Promise<ProctorRoster[]> {
+    return db.select().from(proctorRosters).where(
+      and(
+        gte(proctorRosters.date, startDate),
+        lte(proctorRosters.date, endDate)
+      )
+    );
+  }
+
+  async createProctorRoster(roster: Omit<ProctorRoster, "id" | "createdAt">): Promise<ProctorRoster> {
+    const result = await db.insert(proctorRosters).values(roster).returning();
+    return result[0];
+  }
+
+  async deleteProctorRostersByDateRange(startDate: string, endDate: string): Promise<void> {
+    await db.delete(proctorRosters).where(
+      and(
+        gte(proctorRosters.date, startDate),
+        lte(proctorRosters.date, endDate)
+      )
+    );
   }
 }
 

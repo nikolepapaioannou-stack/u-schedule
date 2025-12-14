@@ -480,16 +480,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!adminId) return;
     
     const { id } = req.params;
-    const { adminNotes } = req.body;
+    const { adminNotes, forceApprove } = req.body;
+    
+    const booking = await storage.getBooking(id);
+    
+    if (!booking) {
+      return res.status(404).json({ error: "Η κράτηση δεν βρέθηκε" });
+    }
+    
+    if (!booking.shiftId) {
+      return res.status(400).json({ error: "Η κράτηση δεν έχει καθορισμένη βάρδια" });
+    }
+    
+    const roster = await storage.getProctorRosterByDateAndShift(booking.bookingDate, booking.shiftId);
+    const shift = await storage.getShift(booking.shiftId);
+    
+    const rosterCapacity = roster?.effectiveCapacity;
+    const shiftCapacity = shift?.maxCandidates;
+    
+    if (rosterCapacity === undefined && (shiftCapacity === undefined || shiftCapacity === 0)) {
+      return res.status(400).json({ 
+        error: "Δεν έχει οριστεί χωρητικότητα για αυτή τη βάρδια. Παρακαλώ ρυθμίστε το πρόγραμμα επιτηρητών ή την μέγιστη χωρητικότητα βάρδιας.",
+        configurationMissing: true,
+      });
+    }
+    
+    const effectiveCapacity = rosterCapacity ?? shiftCapacity ?? 0;
+    
+    const existingBookings = await storage.getBookingsByDateAndShift(booking.bookingDate, booking.shiftId);
+    const currentApprovedCandidates = existingBookings
+      .filter(b => b.status === "approved" && b.id !== id)
+      .reduce((sum, b) => sum + b.candidateCount, 0);
+    
+    const totalAfterApproval = currentApprovedCandidates + booking.candidateCount;
+    const isOverCapacity = totalAfterApproval > effectiveCapacity;
+    
+    if (isOverCapacity && !forceApprove) {
+      return res.status(409).json({
+        error: "Υπέρβαση χωρητικότητας",
+        capacityWarning: {
+          effectiveCapacity,
+          currentApproved: currentApprovedCandidates,
+          requestedCandidates: booking.candidateCount,
+          totalAfterApproval,
+          overage: totalAfterApproval - effectiveCapacity,
+          hasRoster: !!roster,
+        },
+      });
+    }
+    
+    const overrideData: {
+      capacityOverrideBy?: string;
+      capacityOverrideAt?: Date;
+      capacityOverrideDetails?: string;
+    } = {};
+    
+    if (isOverCapacity && forceApprove) {
+      const timestamp = new Date();
+      overrideData.capacityOverrideBy = adminId;
+      overrideData.capacityOverrideAt = timestamp;
+      overrideData.capacityOverrideDetails = JSON.stringify({
+        effectiveCapacity,
+        currentApproved: currentApprovedCandidates,
+        requestedCandidates: booking.candidateCount,
+        totalAfterApproval,
+        overage: totalAfterApproval - effectiveCapacity,
+        hasRoster: !!roster,
+      });
+      console.log(`[CAPACITY OVERRIDE] Admin ${adminId} approved booking ${id} over capacity: ${totalAfterApproval}/${effectiveCapacity} at ${timestamp.toISOString()}`);
+    }
     
     const updated = await storage.updateBooking(id, {
       status: "approved",
-      adminNotes,
+      adminNotes: adminNotes || undefined,
+      ...overrideData,
     });
-    
-    if (!updated) {
-      return res.status(404).json({ error: "Η κράτηση δεν βρέθηκε" });
-    }
     
     res.json(updated);
   });
@@ -701,6 +766,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting push token:", error);
       res.status(500).json({ error: "Σφάλμα κατά τη διαγραφή του push token" });
+    }
+  });
+
+  app.get("/api/proctor-rosters", async (req, res) => {
+    const adminId = await requireAdmin(req, res);
+    if (!adminId) return;
+    
+    try {
+      const rosters = await storage.getProctorRosters();
+      res.json(rosters);
+    } catch (error) {
+      console.error("Error fetching proctor rosters:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την ανάκτηση προγράμματος επιτηρητών" });
+    }
+  });
+
+  app.post("/api/proctor-rosters/upload", async (req, res) => {
+    const adminId = await requireAdmin(req, res);
+    if (!adminId) return;
+    
+    try {
+      const { data } = req.body;
+      
+      if (!data || !Array.isArray(data)) {
+        return res.status(400).json({ error: "Μη έγκυρα δεδομένα" });
+      }
+      
+      const appSettings = await storage.getSettings();
+      const shifts = await storage.getShifts();
+      const shiftMap = new Map(shifts.map(s => [s.name.toLowerCase(), s.id]));
+      
+      const validationErrors: Array<{ row: number; error: string }> = [];
+      const processedRosters: Array<{
+        date: string;
+        shiftId: string;
+        totalProctors: number;
+        reserveProctors: number;
+        effectiveCapacity: number;
+        createdBy: string;
+      }> = [];
+      
+      const dateRange = { start: "", end: "" };
+      
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        const { date, shift, proctorCount } = row;
+        
+        if (!date) {
+          validationErrors.push({ row: i + 1, error: "Λείπει η ημερομηνία" });
+          continue;
+        }
+        if (!shift) {
+          validationErrors.push({ row: i + 1, error: "Λείπει η βάρδια" });
+          continue;
+        }
+        if (typeof proctorCount !== "number" || proctorCount < 0) {
+          validationErrors.push({ row: i + 1, error: "Μη έγκυρος αριθμός επιτηρητών" });
+          continue;
+        }
+        
+        const shiftId = shiftMap.get(shift.toLowerCase());
+        if (!shiftId) {
+          validationErrors.push({ row: i + 1, error: `Άγνωστη βάρδια: ${shift}` });
+          continue;
+        }
+        
+        if (!dateRange.start || date < dateRange.start) {
+          dateRange.start = date;
+        }
+        if (!dateRange.end || date > dateRange.end) {
+          dateRange.end = date;
+        }
+        
+        const reserveProctors = Math.ceil(proctorCount * (appSettings.reservePercentage / 100));
+        const effectiveProctors = proctorCount - reserveProctors;
+        const effectiveCapacity = effectiveProctors * appSettings.candidatesPerProctor;
+        
+        processedRosters.push({
+          date,
+          shiftId,
+          totalProctors: proctorCount,
+          reserveProctors,
+          effectiveCapacity,
+          createdBy: adminId,
+        });
+      }
+      
+      if (processedRosters.length === 0) {
+        return res.status(400).json({ 
+          error: "Δεν βρέθηκαν έγκυρα δεδομένα επιτηρητών",
+          validationErrors: validationErrors.length > 0 ? validationErrors : undefined,
+        });
+      }
+      
+      if (dateRange.start && dateRange.end) {
+        await storage.deleteProctorRostersByDateRange(dateRange.start, dateRange.end);
+      }
+      
+      const createdRosters = [];
+      for (const roster of processedRosters) {
+        const created = await storage.createProctorRoster(roster);
+        createdRosters.push(created);
+      }
+      
+      res.json({
+        success: true,
+        count: createdRosters.length,
+        dateRange,
+        skippedRows: validationErrors.length > 0 ? validationErrors : undefined,
+      });
+    } catch (error) {
+      console.error("Error uploading proctor rosters:", error);
+      res.status(500).json({ error: "Σφάλμα κατά τη μεταφόρτωση προγράμματος επιτηρητών" });
+    }
+  });
+
+  app.delete("/api/proctor-rosters", async (req, res) => {
+    const adminId = await requireAdmin(req, res);
+    if (!adminId) return;
+    
+    try {
+      const { startDate, endDate } = req.body;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: "Απαιτούνται ημερομηνίες έναρξης και λήξης" });
+      }
+      
+      await storage.deleteProctorRostersByDateRange(startDate, endDate);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting proctor rosters:", error);
+      res.status(500).json({ error: "Σφάλμα κατά τη διαγραφή προγράμματος επιτηρητών" });
+    }
+  });
+
+  app.get("/api/proctor-rosters/capacity/:date/:shiftId", async (req, res) => {
+    const userId = await requireAuth(req, res);
+    if (!userId) return;
+    
+    try {
+      const { date, shiftId } = req.params;
+      
+      const roster = await storage.getProctorRosterByDateAndShift(date, shiftId);
+      
+      if (roster) {
+        return res.json({
+          hasRoster: true,
+          effectiveCapacity: roster.effectiveCapacity,
+          totalProctors: roster.totalProctors,
+          reserveProctors: roster.reserveProctors,
+        });
+      }
+      
+      const shift = await storage.getShift(shiftId);
+      const appSettings = await storage.getSettings();
+      
+      res.json({
+        hasRoster: false,
+        effectiveCapacity: shift?.maxCandidates || appSettings.maxCandidatesPerDay,
+        totalProctors: null,
+        reserveProctors: null,
+      });
+    } catch (error) {
+      console.error("Error fetching capacity:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την ανάκτηση χωρητικότητας" });
     }
   });
 

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { StyleSheet, View, Alert, Switch, Pressable } from "react-native";
+import { StyleSheet, View, Alert, Switch, Pressable, Platform, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -20,6 +20,8 @@ interface Settings {
   workingDaysRule: number;
   holdDurationMinutes: number;
   maxCandidatesPerDay: number;
+  candidatesPerProctor: number;
+  reservePercentage: number;
 }
 
 interface Shift {
@@ -45,6 +47,11 @@ export default function SettingsScreen() {
   const [workingDays, setWorkingDays] = useState("6");
   const [holdDuration, setHoldDuration] = useState("15");
   const [maxCandidates, setMaxCandidates] = useState("100");
+  const [candidatesPerProctor, setCandidatesPerProctor] = useState("25");
+  const [reservePercentage, setReservePercentage] = useState("15");
+  const [isUploadingRosters, setIsUploadingRosters] = useState(false);
+  const [showProctorModal, setShowProctorModal] = useState(false);
+  const [proctorJsonInput, setProctorJsonInput] = useState("");
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -58,6 +65,8 @@ export default function SettingsScreen() {
         setWorkingDays(String(settingsData.workingDaysRule));
         setHoldDuration(String(settingsData.holdDurationMinutes));
         setMaxCandidates(String(settingsData.maxCandidatesPerDay));
+        setCandidatesPerProctor(String(settingsData.candidatesPerProctor || 25));
+        setReservePercentage(String(settingsData.reservePercentage || 15));
       }
       setShifts(shiftsData || []);
     } catch (error) {
@@ -77,6 +86,8 @@ export default function SettingsScreen() {
     const workingDaysNum = parseInt(workingDays, 10);
     const holdDurationNum = parseInt(holdDuration, 10);
     const maxCandidatesNum = parseInt(maxCandidates, 10);
+    const candidatesPerProctorNum = parseInt(candidatesPerProctor, 10);
+    const reservePercentageNum = parseInt(reservePercentage, 10);
 
     if (isNaN(workingDaysNum) || workingDaysNum < 1 || workingDaysNum > 30) {
       Alert.alert("Σφάλμα", "Οι εργάσιμες ημέρες πρέπει να είναι μεταξύ 1 και 30");
@@ -90,6 +101,14 @@ export default function SettingsScreen() {
       Alert.alert("Σφάλμα", "Το μέγιστο υποψηφίων πρέπει να είναι μεταξύ 10 και 500");
       return;
     }
+    if (isNaN(candidatesPerProctorNum) || candidatesPerProctorNum < 1 || candidatesPerProctorNum > 100) {
+      Alert.alert("Σφάλμα", "Οι υποψήφιοι ανά επιτηρητή πρέπει να είναι μεταξύ 1 και 100");
+      return;
+    }
+    if (isNaN(reservePercentageNum) || reservePercentageNum < 0 || reservePercentageNum > 50) {
+      Alert.alert("Σφάλμα", "Το ποσοστό εφεδρικών πρέπει να είναι μεταξύ 0 και 50");
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -99,6 +118,8 @@ export default function SettingsScreen() {
           workingDaysRule: workingDaysNum,
           holdDurationMinutes: holdDurationNum,
           maxCandidatesPerDay: maxCandidatesNum,
+          candidatesPerProctor: candidatesPerProctorNum,
+          reservePercentage: reservePercentageNum,
         }),
       });
       Alert.alert("Επιτυχία", "Οι ρυθμίσεις αποθηκεύτηκαν");
@@ -106,6 +127,36 @@ export default function SettingsScreen() {
       Alert.alert("Σφάλμα", err.message || "Αποτυχία αποθήκευσης");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleUploadProctorSchedule = () => {
+    setProctorJsonInput("");
+    setShowProctorModal(true);
+  };
+
+  const handleSubmitProctorData = async () => {
+    if (!proctorJsonInput.trim()) {
+      Alert.alert("Σφάλμα", "Εισάγετε δεδομένα JSON");
+      return;
+    }
+    
+    setIsUploadingRosters(true);
+    try {
+      const parsedData = JSON.parse(proctorJsonInput);
+      const result = await authFetch("/api/proctor-rosters/upload", {
+        method: "POST",
+        body: JSON.stringify({ data: parsedData }),
+      });
+      setShowProctorModal(false);
+      Alert.alert(
+        "Επιτυχία",
+        `Εισήχθησαν ${result.count} εγγραφές επιτηρητών από ${result.dateRange.start} έως ${result.dateRange.end}`
+      );
+    } catch (err: any) {
+      Alert.alert("Σφάλμα", err.message || "Αποτυχία εισαγωγής δεδομένων");
+    } finally {
+      setIsUploadingRosters(false);
     }
   };
 
@@ -203,6 +254,48 @@ export default function SettingsScreen() {
         </Card>
 
         <Card elevation={1} style={styles.section}>
+          <ThemedText type="h4">Ρυθμίσεις Επιτηρητών</ThemedText>
+
+          <TextInput
+            label="Υποψήφιοι ανά Επιτηρητή"
+            value={candidatesPerProctor}
+            onChangeText={setCandidatesPerProctor}
+            keyboardType="number-pad"
+            placeholder="25"
+          />
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+            Μέγιστος αριθμός υποψηφίων που επιτηρεί κάθε επιτηρητής
+          </ThemedText>
+
+          <TextInput
+            label="Ποσοστό Εφεδρικών (%)"
+            value={reservePercentage}
+            onChangeText={setReservePercentage}
+            keyboardType="number-pad"
+            placeholder="15"
+          />
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+            Ποσοστό επιτηρητών που κρατείται ως εφεδρεία
+          </ThemedText>
+
+          <View style={styles.proctorUploadSection}>
+            <ThemedText type="body" style={{ marginBottom: Spacing.sm }}>
+              Πρόγραμμα Επιτηρητών
+            </ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+              Ανεβάστε δεδομένα επιτηρητών σε μορφή JSON. Κάθε εγγραφή πρέπει να περιέχει: date (YYYY-MM-DD), shift (morning/midday/afternoon), proctorCount (αριθμός)
+            </ThemedText>
+            <Button
+              onPress={handleUploadProctorSchedule}
+              disabled={isUploadingRosters}
+              variant="secondary"
+            >
+              {isUploadingRosters ? "Μεταφόρτωση..." : "Εισαγωγή Προγράμματος"}
+            </Button>
+          </View>
+        </Card>
+
+        <Card elevation={1} style={styles.section}>
           <ThemedText type="h4">Βάρδιες Εξετάσεων</ThemedText>
 
           {shifts.map((shift) => (
@@ -249,6 +342,48 @@ export default function SettingsScreen() {
           </ThemedText>
         </View>
       </KeyboardAwareScrollViewCompat>
+
+      <Modal
+        visible={showProctorModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowProctorModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}>
+            <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>
+              Εισαγωγή Προγράμματος Επιτηρητών
+            </ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+              Μορφή: [{"{"}"date": "2025-01-15", "shift": "morning", "proctorCount": 10{"}"}]
+            </ThemedText>
+            <TextInput
+              label="Δεδομένα JSON"
+              value={proctorJsonInput}
+              onChangeText={setProctorJsonInput}
+              multiline
+              numberOfLines={6}
+              placeholder='[{"date": "2025-01-15", "shift": "morning", "proctorCount": 10}]'
+            />
+            <View style={styles.modalButtons}>
+              <Button
+                onPress={() => setShowProctorModal(false)}
+                variant="secondary"
+                style={{ flex: 1, marginRight: Spacing.sm }}
+              >
+                Ακύρωση
+              </Button>
+              <Button
+                onPress={handleSubmitProctorData}
+                disabled={isUploadingRosters}
+                style={{ flex: 1 }}
+              >
+                {isUploadingRosters ? "Αποθήκευση..." : "Αποθήκευση"}
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -284,5 +419,28 @@ const styles = StyleSheet.create({
   versionInfo: {
     marginTop: Spacing["3xl"],
     marginBottom: Spacing.xl,
+  },
+  proctorUploadSection: {
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(128, 128, 128, 0.2)",
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    padding: Spacing.xl,
+  },
+  modalContent: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.xl,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    marginTop: Spacing.lg,
   },
 });

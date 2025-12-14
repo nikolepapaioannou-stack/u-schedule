@@ -43,7 +43,22 @@ export const settings = pgTable("settings", {
   workingDaysRule: integer("working_days_rule").notNull().default(6),
   holdDurationMinutes: integer("hold_duration_minutes").notNull().default(15),
   maxCandidatesPerDay: integer("max_candidates_per_day").notNull().default(100),
+  candidatesPerProctor: integer("candidates_per_proctor").notNull().default(25),
+  reservePercentage: integer("reserve_percentage").notNull().default(15),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const proctorRosters = pgTable("proctor_rosters", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  date: date("date").notNull(),
+  shiftId: varchar("shift_id").notNull().references(() => shifts.id),
+  totalProctors: integer("total_proctors").notNull(),
+  reserveProctors: integer("reserve_proctors").notNull().default(0),
+  effectiveCapacity: integer("effective_capacity").notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const bookings = pgTable("bookings", {
@@ -64,6 +79,9 @@ export const bookings = pgTable("bookings", {
   confirmationNumber: text("confirmation_number"),
   isSplit: boolean("is_split").notNull().default(false),
   splitGroupId: varchar("split_group_id"),
+  capacityOverrideBy: varchar("capacity_override_by").references(() => users.id),
+  capacityOverrideAt: timestamp("capacity_override_at"),
+  capacityOverrideDetails: text("capacity_override_details"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -176,3 +194,4 @@ export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Waitlist = typeof waitlist.$inferSelect;
 export type InsertWaitlist = z.infer<typeof insertWaitlistSchema>;
 export type PushToken = typeof pushTokens.$inferSelect;
+export type ProctorRoster = typeof proctorRosters.$inferSelect;
