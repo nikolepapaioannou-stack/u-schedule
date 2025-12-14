@@ -9,6 +9,7 @@ interface User {
   email: string;
   ugrId: string;
   isAdmin: boolean;
+  role: string;
   biometricEnabled?: boolean;
 }
 

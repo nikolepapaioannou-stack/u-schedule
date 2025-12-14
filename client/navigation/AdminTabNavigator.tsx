@@ -9,11 +9,13 @@ import AdminDashboardScreen from "@/screens/AdminDashboardScreen";
 import PendingApprovalsScreen from "@/screens/PendingApprovalsScreen";
 import CalendarScreen from "@/screens/CalendarScreen";
 import SettingsScreen from "@/screens/SettingsScreen";
+import UserManagementScreen from "@/screens/UserManagementScreen";
 
 export type AdminTabParamList = {
   Dashboard: undefined;
   Pending: undefined;
   Calendar: undefined;
+  Users: undefined;
   Settings: undefined;
 };
 
@@ -75,6 +77,16 @@ export default function AdminTabNavigator() {
           title: "Ημερολόγιο",
           tabBarIcon: ({ color, size }) => (
             <AppIcon name="calendar-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Users"
+        component={UserManagementScreen}
+        options={{
+          title: "Χρήστες",
+          tabBarIcon: ({ color, size }) => (
+            <AppIcon name="account-group-outline" size={size} color={color} />
           ),
         }}
       />

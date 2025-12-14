@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage, initializeDefaultData } from "./storage";
-import { insertUserSchema, loginSchema, searchSlotsSchema, insertBookingSchema, insertClosedDateSchema } from "@shared/schema";
+import { insertUserSchema, loginSchema, searchSlotsSchema, insertBookingSchema, insertClosedDateSchema, adminCreateUserSchema, updateUserRoleSchema, userRoles, type UserRole } from "@shared/schema";
 import { createHash, randomBytes } from "crypto";
 import * as XLSX from "xlsx";
 
@@ -85,8 +85,20 @@ async function requireAdmin(req: Request, res: Response): Promise<string | null>
   if (!userId) return null;
   
   const user = await storage.getUser(userId);
-  if (!user?.isAdmin) {
+  if (!user?.isAdmin && user?.role !== 'admin' && user?.role !== 'superadmin') {
     res.status(403).json({ error: "Απαιτούνται δικαιώματα διαχειριστή" });
+    return null;
+  }
+  return userId;
+}
+
+async function requireSuperAdmin(req: Request, res: Response): Promise<string | null> {
+  const userId = await requireAuth(req, res);
+  if (!userId) return null;
+  
+  const user = await storage.getUser(userId);
+  if (user?.role !== 'superadmin') {
+    res.status(403).json({ error: "Απαιτούνται δικαιώματα κεντρικού διαχειριστή" });
     return null;
   }
   return userId;
@@ -262,7 +274,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const token = await createSession(user.id);
       
       res.json({
-        user: { id: user.id, email: user.email, ugrId: user.ugrId, isAdmin: user.isAdmin },
+        user: { 
+          id: user.id, 
+          email: user.email, 
+          ugrId: user.ugrId, 
+          isAdmin: user.isAdmin,
+          role: user.role || 'user',
+        },
         token,
       });
     } catch (error) {
@@ -288,7 +306,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const token = await createSession(user.id);
       
       res.json({
-        user: { id: user.id, email: user.email, ugrId: user.ugrId, isAdmin: user.isAdmin },
+        user: { 
+          id: user.id, 
+          email: user.email, 
+          ugrId: user.ugrId, 
+          isAdmin: user.isAdmin,
+          role: user.role || (user.isAdmin ? 'superadmin' : 'user'),
+        },
         token,
       });
     } catch (error) {
@@ -311,6 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       email: user.email,
       ugrId: user.ugrId,
       isAdmin: user.isAdmin,
+      role: user.role || (user.isAdmin ? 'superadmin' : 'user'),
       biometricEnabled: user.biometricEnabled,
     });
   });
@@ -330,6 +355,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { enabled } = req.body;
     await storage.updateUserBiometric(userId, enabled);
     res.json({ success: true });
+  });
+
+  // User Management - Super Admin only for creating admins
+  app.get("/api/admin/users", async (req, res) => {
+    const adminId = await requireAdmin(req, res);
+    if (!adminId) return;
+    
+    try {
+      const allUsers = await storage.getAllUsers();
+      res.json(allUsers.map(u => ({
+        id: u.id,
+        email: u.email,
+        ugrId: u.ugrId,
+        role: u.role || (u.isAdmin ? 'superadmin' : 'user'),
+        isAdmin: u.isAdmin,
+        createdAt: u.createdAt,
+      })));
+    } catch (error) {
+      console.error("Get users error:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την ανάκτηση χρηστών" });
+    }
+  });
+
+  app.post("/api/admin/users", async (req, res) => {
+    const adminId = await requireAdmin(req, res);
+    if (!adminId) return;
+    
+    try {
+      const parsed = adminCreateUserSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Μη έγκυρα δεδομένα", details: parsed.error.errors });
+      }
+      
+      const { email, password, ugrId, role } = parsed.data;
+      
+      // Only superadmin can create admin or superadmin users
+      const admin = await storage.getUser(adminId);
+      if ((role === 'admin' || role === 'superadmin') && admin?.role !== 'superadmin') {
+        return res.status(403).json({ error: "Μόνο ο κεντρικός διαχειριστής μπορεί να δημιουργήσει λογαριασμούς διαχειριστών" });
+      }
+      
+      // Check if email already exists
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
+        return res.status(409).json({ error: "Το email χρησιμοποιείται ήδη" });
+      }
+      
+      // Check if UGR ID already exists
+      const existingUgr = await storage.getUserByUgrId(ugrId);
+      if (existingUgr) {
+        return res.status(409).json({ error: "Το UGR ID χρησιμοποιείται ήδη" });
+      }
+      
+      const hashedPassword = hashPassword(password);
+      const newUser = await storage.createUserWithRole({
+        email,
+        password: hashedPassword,
+        ugrId,
+        role,
+        isAdmin: role === 'admin' || role === 'superadmin',
+      });
+      
+      res.status(201).json({
+        id: newUser.id,
+        email: newUser.email,
+        ugrId: newUser.ugrId,
+        role: newUser.role,
+        isAdmin: newUser.isAdmin,
+        createdAt: newUser.createdAt,
+      });
+    } catch (error) {
+      console.error("Create user error:", error);
+      res.status(500).json({ error: "Σφάλμα κατά τη δημιουργία χρήστη" });
+    }
+  });
+
+  app.put("/api/admin/users/:id/role", async (req, res) => {
+    const adminId = await requireSuperAdmin(req, res);
+    if (!adminId) return;
+    
+    try {
+      const { id } = req.params;
+      const parsed = updateUserRoleSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Μη έγκυρος ρόλος" });
+      }
+      
+      const { role } = parsed.data;
+      
+      // Prevent changing own role
+      if (id === adminId) {
+        return res.status(400).json({ error: "Δεν μπορείτε να αλλάξετε τον δικό σας ρόλο" });
+      }
+      
+      const user = await storage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ error: "Ο χρήστης δεν βρέθηκε" });
+      }
+      
+      const updated = await storage.updateUserRole(id, role);
+      res.json({
+        id: updated.id,
+        email: updated.email,
+        ugrId: updated.ugrId,
+        role: updated.role,
+        isAdmin: updated.isAdmin,
+      });
+    } catch (error) {
+      console.error("Update role error:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την ενημέρωση ρόλου" });
+    }
+  });
+
+  app.delete("/api/admin/users/:id", async (req, res) => {
+    const adminId = await requireSuperAdmin(req, res);
+    if (!adminId) return;
+    
+    try {
+      const { id } = req.params;
+      
+      // Prevent deleting self
+      if (id === adminId) {
+        return res.status(400).json({ error: "Δεν μπορείτε να διαγράψετε τον εαυτό σας" });
+      }
+      
+      const user = await storage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ error: "Ο χρήστης δεν βρέθηκε" });
+      }
+      
+      await storage.deleteUser(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete user error:", error);
+      res.status(500).json({ error: "Σφάλμα κατά τη διαγραφή χρήστη" });
+    }
   });
 
   app.get("/api/shifts", async (req, res) => {

@@ -3,6 +3,9 @@ import { pgTable, text, varchar, integer, boolean, timestamp, date } from "drizz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const userRoles = ["user", "admin", "superadmin"] as const;
+export type UserRole = typeof userRoles[number];
+
 export const users = pgTable("users", {
   id: varchar("id")
     .primaryKey()
@@ -10,6 +13,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   ugrId: text("ugr_id").notNull().unique(),
+  role: text("role").notNull().default("user"),
   isAdmin: boolean("is_admin").notNull().default(false),
   biometricEnabled: boolean("biometric_enabled").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -149,6 +153,17 @@ export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
   ugrId: true,
+});
+
+export const adminCreateUserSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  ugrId: z.string().min(1),
+  role: z.enum(userRoles).default("user"),
+});
+
+export const updateUserRoleSchema = z.object({
+  role: z.enum(userRoles),
 });
 
 export const loginSchema = z.object({

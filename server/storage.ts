@@ -43,6 +43,10 @@ export interface IStorage {
   getUserByUgrId(ugrId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserBiometric(userId: string, enabled: boolean): Promise<void>;
+  getAllUsers(): Promise<User[]>;
+  createUserWithRole(user: { email: string; password: string; ugrId: string; role: string; isAdmin: boolean }): Promise<User>;
+  updateUserRole(userId: string, role: string): Promise<User>;
+  deleteUser(userId: string): Promise<void>;
   
   getShifts(): Promise<Shift[]>;
   getShift(id: string): Promise<Shift | undefined>;
@@ -128,6 +132,31 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserBiometric(userId: string, enabled: boolean): Promise<void> {
     await db.update(users).set({ biometricEnabled: enabled }).where(eq(users.id, userId));
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async createUserWithRole(user: { email: string; password: string; ugrId: string; role: string; isAdmin: boolean }): Promise<User> {
+    const result = await db.insert(users).values({
+      email: user.email.toLowerCase(),
+      password: user.password,
+      ugrId: user.ugrId,
+      role: user.role,
+      isAdmin: user.isAdmin,
+    }).returning();
+    return result[0];
+  }
+
+  async updateUserRole(userId: string, role: string): Promise<User> {
+    const isAdmin = role === 'admin' || role === 'superadmin';
+    const result = await db.update(users).set({ role, isAdmin }).where(eq(users.id, userId)).returning();
+    return result[0];
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, userId));
   }
 
   async getShifts(): Promise<Shift[]> {
