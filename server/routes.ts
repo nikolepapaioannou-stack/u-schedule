@@ -228,7 +228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ugrId,
       });
       
-      const token = createSession(user.id);
+      const token = await createSession(user.id);
       
       res.json({
         user: { id: user.id, email: user.email, ugrId: user.ugrId, isAdmin: user.isAdmin },
@@ -254,7 +254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Λάθος email ή κωδικός" });
       }
       
-      const token = createSession(user.id);
+      const token = await createSession(user.id);
       
       res.json({
         user: { id: user.id, email: user.email, ugrId: user.ugrId, isAdmin: user.isAdmin },
