@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { StyleSheet, View, Pressable, Switch, Platform, Alert } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as LocalAuthentication from "expo-local-authentication";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -83,7 +83,7 @@ export default function ProfileScreen() {
 
         <Card elevation={1} style={styles.profileCard}>
           <View style={[styles.avatarContainer, { backgroundColor: theme.primary }]}>
-            <Ionicons name="person-outline" size={32} color="#FFFFFF" />
+            <MaterialCommunityIcons name="account-outline" size={32} color="#FFFFFF" />
           </View>
           <View style={styles.profileInfo}>
             <ThemedText type="h3">{user?.email}</ThemedText>
@@ -99,7 +99,7 @@ export default function ProfileScreen() {
           <Card elevation={1}>
             <Pressable style={styles.settingRow}>
               <View style={styles.settingInfo}>
-                <Ionicons name="phone-portrait-outline" size={20} color={theme.textSecondary} />
+                <MaterialCommunityIcons name="cellphone" size={20} color={theme.textSecondary} />
                 <View style={{ marginLeft: Spacing.md, flex: 1 }}>
                   <ThemedText type="body">Βιομετρική Σύνδεση</ThemedText>
                   <ThemedText type="small" style={{ color: theme.textSecondary }}>
@@ -139,7 +139,7 @@ export default function ProfileScreen() {
             style={{ backgroundColor: theme.error }}
           >
             <View style={styles.logoutButtonContent}>
-              <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
+              <MaterialCommunityIcons name="logout" size={20} color="#FFFFFF" />
               <ThemedText type="button" style={{ color: "#FFFFFF", marginLeft: Spacing.sm }}>
                 {isLoggingOut ? "Αποσύνδεση..." : "Αποσύνδεση"}
               </ThemedText>

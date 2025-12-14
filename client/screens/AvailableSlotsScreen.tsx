@@ -4,7 +4,7 @@ import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -132,7 +132,7 @@ export default function AvailableSlotsScreen() {
 
         <View style={styles.cardBody}>
           <View style={styles.infoRow}>
-            <Ionicons name="people-outline" size={16} color={theme.textSecondary} />
+            <MaterialCommunityIcons name="account-group-outline" size={16} color={theme.textSecondary} />
             <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
               Διαθέσιμες θέσεις: {item.availableCapacity}
             </ThemedText>
@@ -140,7 +140,7 @@ export default function AvailableSlotsScreen() {
 
           {item.isSplit ? (
             <View style={[styles.warningBox, { backgroundColor: theme.warning + "20" }]}>
-              <Ionicons name="warning-outline" size={16} color={theme.warning} />
+              <MaterialCommunityIcons name="alert-outline" size={16} color={theme.warning} />
               <ThemedText type="small" style={{ marginLeft: Spacing.sm, color: theme.warning, flex: 1 }}>
                 Το τμήμα θα χρειαστεί να χωριστεί σε πολλαπλές θέσεις
               </ThemedText>
@@ -162,7 +162,7 @@ export default function AvailableSlotsScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <View style={[styles.emptyIcon, { backgroundColor: theme.backgroundSecondary }]}>
-        <Ionicons name="calendar-outline" size={48} color={theme.textSecondary} />
+        <MaterialCommunityIcons name="calendar-outline" size={48} color={theme.textSecondary} />
       </View>
       <ThemedText type="h3" style={{ marginTop: Spacing.xl, textAlign: "center" }}>
         Δεν βρέθηκαν διαθέσιμες θέσεις
@@ -188,7 +188,7 @@ export default function AvailableSlotsScreen() {
     <ThemedView style={styles.container}>
       {error ? (
         <View style={[styles.errorBanner, { backgroundColor: theme.error + "20" }]}>
-          <Ionicons name="alert-circle-outline" size={16} color={theme.error} />
+          <MaterialCommunityIcons name="alert-circle-outline" size={16} color={theme.error} />
           <ThemedText type="small" style={{ color: theme.error, marginLeft: Spacing.sm, flex: 1 }}>
             {error}
           </ThemedText>

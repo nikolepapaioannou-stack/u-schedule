@@ -8,7 +8,7 @@ import {
   Text,
   Modal,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -53,7 +53,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
             },
           ]}
         >
-          <Ionicons name="alert-circle-outline" size={20} color={theme.text} />
+          <MaterialCommunityIcons name="alert-circle-outline" size={20} color={theme.text} />
         </Pressable>
       ) : null}
 
@@ -106,7 +106,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
                     { opacity: pressed ? 0.6 : 1 },
                   ]}
                 >
-                  <Ionicons name="close-outline" size={24} color={theme.text} />
+                  <MaterialCommunityIcons name="close" size={24} color={theme.text} />
                 </Pressable>
               </View>
 

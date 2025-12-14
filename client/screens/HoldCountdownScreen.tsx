@@ -4,7 +4,7 @@ import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, withRepeat, withSequence } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -210,17 +210,17 @@ export default function HoldCountdownScreen() {
           <Card elevation={1} style={styles.summaryCard}>
             <ThemedText type="h4">Στοιχεία Κράτησης</ThemedText>
             <View style={styles.summaryRow}>
-              <Ionicons name="pricetag-outline" size={16} color={theme.textSecondary} />
+              <MaterialCommunityIcons name="pricetag-outline" size={16} color={theme.textSecondary} />
               <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>Τμήμα: {booking.departmentId}</ThemedText>
             </View>
             <View style={styles.summaryRow}>
-              <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
+              <MaterialCommunityIcons name="calendar-outline" size={16} color={theme.textSecondary} />
               <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
                 {new Date(booking.bookingDate).toLocaleDateString("el-GR")}
               </ThemedText>
             </View>
             <View style={styles.summaryRow}>
-              <Ionicons name="people-outline" size={16} color={theme.textSecondary} />
+              <MaterialCommunityIcons name="account-group-outline" size={16} color={theme.textSecondary} />
               <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>{booking.candidateCount} υποψήφιοι</ThemedText>
             </View>
           </Card>

@@ -3,7 +3,7 @@ import { StyleSheet, View, FlatList, RefreshControl, Alert } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -159,14 +159,14 @@ export default function PendingApprovalsScreen() {
 
         <View style={styles.cardBody}>
           <View style={styles.infoRow}>
-            <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
+            <MaterialCommunityIcons name="calendar-outline" size={16} color={theme.textSecondary} />
             <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
               {formatDate(item.bookingDate)}
             </ThemedText>
           </View>
 
           <View style={styles.infoRow}>
-            <Ionicons name="time-outline" size={16} color={theme.textSecondary} />
+            <MaterialCommunityIcons name="clock-outline" size={16} color={theme.textSecondary} />
             <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
               {SHIFT_LABELS[item.preferredShift as keyof typeof SHIFT_LABELS] || item.preferredShift}
             </ThemedText>
@@ -174,7 +174,7 @@ export default function PendingApprovalsScreen() {
 
           {item.user ? (
             <View style={styles.infoRow}>
-              <Ionicons name="person-outline" size={16} color={theme.textSecondary} />
+              <MaterialCommunityIcons name="account-outline" size={16} color={theme.textSecondary} />
               <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
                 {item.user.ugrId}
               </ThemedText>
@@ -196,7 +196,7 @@ export default function PendingApprovalsScreen() {
             style={[styles.actionButton, { backgroundColor: theme.success }]}
           >
             <View style={styles.buttonContent}>
-              <Ionicons name="checkmark-outline" size={18} color="#fff" />
+              <MaterialCommunityIcons name="check" size={18} color="#fff" />
               <ThemedText type="button" style={{ color: "#fff", marginLeft: Spacing.xs }}>
                 {isProcessing ? "..." : "Έγκριση"}
               </ThemedText>
@@ -208,7 +208,7 @@ export default function PendingApprovalsScreen() {
             style={[styles.actionButton, { backgroundColor: theme.error }]}
           >
             <View style={styles.buttonContent}>
-              <Ionicons name="close-outline" size={18} color="#fff" />
+              <MaterialCommunityIcons name="close" size={18} color="#fff" />
               <ThemedText type="button" style={{ color: "#fff", marginLeft: Spacing.xs }}>
                 Απόρριψη
               </ThemedText>
@@ -222,7 +222,7 @@ export default function PendingApprovalsScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <View style={[styles.emptyIcon, { backgroundColor: theme.backgroundSecondary }]}>
-        <Ionicons name="checkmark-circle-outline" size={48} color={theme.success} />
+        <MaterialCommunityIcons name="check-circle-outline" size={48} color={theme.success} />
       </View>
       <ThemedText type="h3" style={{ marginTop: Spacing.xl, textAlign: "center" }}>
         Όλες οι κρατήσεις επεξεργάστηκαν

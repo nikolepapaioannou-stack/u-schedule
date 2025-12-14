@@ -3,7 +3,7 @@ import { StyleSheet, View, FlatList, RefreshControl, Pressable, ViewStyle } from
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -110,7 +110,7 @@ export default function NotificationsScreen() {
               styles.iconContainer,
               { backgroundColor: isUnread ? theme.primary + "20" : theme.backgroundSecondary }
             ]}>
-              <Ionicons 
+              <MaterialCommunityIcons 
                 name={iconName as any} 
                 size={20} 
                 color={isUnread ? theme.primary : theme.textSecondary} 
@@ -166,7 +166,7 @@ export default function NotificationsScreen() {
               style={[styles.markAllButton, { backgroundColor: theme.primary + "10" }]}
               onPress={handleMarkAllAsRead}
             >
-              <Ionicons name="checkbox-outline" size={16} color={theme.primary} />
+              <MaterialCommunityIcons name="checkbox-outline" size={16} color={theme.primary} />
               <ThemedText type="small" style={{ color: theme.primary, marginLeft: 6 }}>
                 Επισήμανση όλων ως αναγνωσμένα ({unreadCount})
               </ThemedText>
@@ -176,7 +176,7 @@ export default function NotificationsScreen() {
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="bell-off" size={48} color={theme.textSecondary} />
+              <MaterialCommunityIcons name="bell-off" size={48} color={theme.textSecondary} />
               <ThemedText type="body" style={[styles.emptyText, { color: theme.textSecondary }]}>
                 Δεν έχετε ειδοποιήσεις
               </ThemedText>

@@ -6,7 +6,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
@@ -18,7 +18,7 @@ import { PushNotificationHandler } from "@/components/PushNotificationHandler";
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    ...Ionicons.font,
+    ...MaterialCommunityIcons.font,
   });
 
   if (!fontsLoaded) {

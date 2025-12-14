@@ -1,6 +1,6 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet } from "react-native";
 import { useTheme } from "@/hooks/useTheme";
@@ -54,7 +54,7 @@ export default function AdminTabNavigator() {
         options={{
           title: "Πίνακας",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="grid-outline" size={size} color={color} />
+            <MaterialCommunityIcons name="view-grid-outline" size={size} color={color} />
           ),
         }}
       />
@@ -64,7 +64,7 @@ export default function AdminTabNavigator() {
         options={{
           title: "Εκκρεμείς",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="time-outline" size={size} color={color} />
+            <MaterialCommunityIcons name="clock-outline" size={size} color={color} />
           ),
         }}
       />
@@ -74,7 +74,7 @@ export default function AdminTabNavigator() {
         options={{
           title: "Ημερολόγιο",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" size={size} color={color} />
+            <MaterialCommunityIcons name="calendar-outline" size={size} color={color} />
           ),
         }}
       />
@@ -84,7 +84,7 @@ export default function AdminTabNavigator() {
         options={{
           title: "Ρυθμίσεις",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
+            <MaterialCommunityIcons name="cog-outline" size={size} color={color} />
           ),
         }}
       />

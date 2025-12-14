@@ -3,7 +3,7 @@ import { StyleSheet, View, ActivityIndicator } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRoute, RouteProp } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -69,7 +69,7 @@ export default function BookingDetailsScreen() {
   if (!booking) {
     return (
       <ThemedView style={[styles.container, styles.centerContent]}>
-        <Ionicons name="alert-circle-outline" size={48} color={theme.textSecondary} />
+        <MaterialCommunityIcons name="alert-circle-outline" size={48} color={theme.textSecondary} />
         <ThemedText type="h3" style={{ marginTop: Spacing.lg }}>Η κράτηση δεν βρέθηκε</ThemedText>
       </ThemedView>
     );
@@ -96,7 +96,7 @@ export default function BookingDetailsScreen() {
         ]}
       >
         <View style={[styles.statusBanner, { backgroundColor: statusColor + "20" }]}>
-          <Ionicons name={statusConfig.icon as any} size={24} color={statusColor} />
+          <MaterialCommunityIcons name={statusConfig.icon as any} size={24} color={statusColor} />
           <ThemedText type="h4" style={{ color: statusColor, marginLeft: Spacing.md }}>
             {statusConfig.label}
           </ThemedText>
@@ -107,7 +107,7 @@ export default function BookingDetailsScreen() {
 
           <View style={styles.detailRow}>
             <View style={styles.detailLabel}>
-              <Ionicons name="pricetag-outline" size={18} color={theme.textSecondary} />
+              <MaterialCommunityIcons name="pricetag-outline" size={18} color={theme.textSecondary} />
               <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}>
                 Κωδικός Τμήματος
               </ThemedText>
@@ -117,7 +117,7 @@ export default function BookingDetailsScreen() {
 
           <View style={styles.detailRow}>
             <View style={styles.detailLabel}>
-              <Ionicons name="calendar-outline" size={18} color={theme.textSecondary} />
+              <MaterialCommunityIcons name="calendar-outline" size={18} color={theme.textSecondary} />
               <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}>
                 Ημερομηνία Εξέτασης
               </ThemedText>
@@ -127,7 +127,7 @@ export default function BookingDetailsScreen() {
 
           <View style={styles.detailRow}>
             <View style={styles.detailLabel}>
-              <Ionicons name="time-outline" size={18} color={theme.textSecondary} />
+              <MaterialCommunityIcons name="clock-outline" size={18} color={theme.textSecondary} />
               <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}>
                 Βάρδια
               </ThemedText>
@@ -139,7 +139,7 @@ export default function BookingDetailsScreen() {
 
           <View style={styles.detailRow}>
             <View style={styles.detailLabel}>
-              <Ionicons name="people-outline" size={18} color={theme.textSecondary} />
+              <MaterialCommunityIcons name="account-group-outline" size={18} color={theme.textSecondary} />
               <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}>
                 Αριθμός Υποψηφίων
               </ThemedText>
@@ -150,7 +150,7 @@ export default function BookingDetailsScreen() {
           {booking.confirmationNumber ? (
             <View style={styles.detailRow}>
               <View style={styles.detailLabel}>
-                <Ionicons name="document-text-outline" size={18} color={theme.textSecondary} />
+                <MaterialCommunityIcons name="document-text-outline" size={18} color={theme.textSecondary} />
                 <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}>
                   Αριθμός Επιβεβαίωσης
                 </ThemedText>

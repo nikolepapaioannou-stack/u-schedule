@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import * as LocalAuthentication from "expo-local-authentication";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -118,7 +118,7 @@ export default function LoginScreen() {
         <View style={styles.formContainer}>
           {error ? (
             <View style={[styles.errorContainer, { backgroundColor: theme.error + "20" }]}>
-              <Ionicons name="alert-circle-outline" size={16} color={theme.error} />
+              <MaterialCommunityIcons name="alert-circle-outline" size={16} color={theme.error} />
               <ThemedText type="small" style={{ color: theme.error, marginLeft: Spacing.sm }}>
                 {error}
               </ThemedText>
@@ -143,7 +143,7 @@ export default function LoginScreen() {
             secureTextEntry={!showPassword}
             rightIcon={
               <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
-                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={24} color={theme.textSecondary} />
+                <MaterialCommunityIcons name={showPassword ? "eye-off-outline" : "eye-outline"} size={24} color={theme.textSecondary} />
               </Pressable>
             }
           />
@@ -157,7 +157,7 @@ export default function LoginScreen() {
               style={[styles.biometricButton, { borderColor: theme.border }]}
               onPress={handleBiometricLogin}
             >
-              <Ionicons name="phone-portrait-outline" size={24} color={theme.primary} />
+              <MaterialCommunityIcons name="cellphone" size={24} color={theme.primary} />
               <ThemedText type="body" style={{ marginLeft: Spacing.md, color: theme.primary }}>
                 Σύνδεση με δαχτυλικό αποτύπωμα
               </ThemedText>

@@ -1,6 +1,6 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet } from "react-native";
 import { useTheme } from "@/hooks/useTheme";
@@ -54,7 +54,7 @@ export default function UserTabNavigator() {
         options={{
           title: "Αναζήτηση",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search-outline" size={size} color={color} />
+            <MaterialCommunityIcons name="magnify" size={size} color={color} />
           ),
         }}
       />
@@ -64,7 +64,7 @@ export default function UserTabNavigator() {
         options={{
           title: "Κρατήσεις",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" size={size} color={color} />
+            <MaterialCommunityIcons name="calendar-outline" size={size} color={color} />
           ),
         }}
       />
@@ -74,7 +74,7 @@ export default function UserTabNavigator() {
         options={{
           title: "Ειδοποιήσεις",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="notifications-outline" size={size} color={color} />
+            <MaterialCommunityIcons name="notifications-outline" size={size} color={color} />
           ),
         }}
       />
@@ -84,7 +84,7 @@ export default function UserTabNavigator() {
         options={{
           title: "Προφίλ",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
+            <MaterialCommunityIcons name="account-outline" size={size} color={color} />
           ),
         }}
       />

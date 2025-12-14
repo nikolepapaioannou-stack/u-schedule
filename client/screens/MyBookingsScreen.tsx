@@ -4,7 +4,7 @@ import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -125,7 +125,7 @@ export default function MyBookingsScreen() {
             <ThemedText type="h4">Τμήμα {item.departmentId}</ThemedText>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: statusColor + "20" }]}>
-            <Ionicons name={statusConfig.icon as any} size={14} color={statusColor} />
+            <MaterialCommunityIcons name={statusConfig.icon as any} size={14} color={statusColor} />
             <ThemedText type="caption" style={{ color: statusColor, marginLeft: 4, fontWeight: "600" }}>
               {statusConfig.label}
             </ThemedText>
@@ -134,21 +134,21 @@ export default function MyBookingsScreen() {
 
         <View style={styles.cardBody}>
           <View style={styles.infoRow}>
-            <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
+            <MaterialCommunityIcons name="calendar-outline" size={16} color={theme.textSecondary} />
             <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
               {formatDate(item.bookingDate)}
             </ThemedText>
           </View>
 
           <View style={styles.infoRow}>
-            <Ionicons name="time-outline" size={16} color={theme.textSecondary} />
+            <MaterialCommunityIcons name="clock-outline" size={16} color={theme.textSecondary} />
             <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
               {SHIFT_LABELS[item.preferredShift as keyof typeof SHIFT_LABELS] || item.preferredShift}
             </ThemedText>
           </View>
 
           <View style={styles.infoRow}>
-            <Ionicons name="people-outline" size={16} color={theme.textSecondary} />
+            <MaterialCommunityIcons name="account-group-outline" size={16} color={theme.textSecondary} />
             <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
               {item.candidateCount} υποψήφιοι
             </ThemedText>
@@ -174,7 +174,7 @@ export default function MyBookingsScreen() {
     return (
       <View style={styles.emptyState}>
         <View style={[styles.emptyIcon, { backgroundColor: theme.backgroundSecondary }]}>
-          <Ionicons name={isHistoryTab ? "archive-outline" : "calendar-outline"} size={48} color={theme.textSecondary} />
+          <MaterialCommunityIcons name={isHistoryTab ? "archive-outline" : "calendar-outline"} size={48} color={theme.textSecondary} />
         </View>
         <ThemedText type="h3" style={{ marginTop: Spacing.xl, textAlign: "center" }}>
           {isHistoryTab ? "Δεν υπάρχει ιστορικό" : "Δεν υπάρχουν ενεργές κρατήσεις"}
@@ -197,8 +197,8 @@ export default function MyBookingsScreen() {
         ]}
         onPress={() => setActiveTab("active")}
       >
-        <Ionicons 
-          name="time-outline" 
+        <MaterialCommunityIcons 
+          name="clock-outline" 
           size={16} 
           color={activeTab === "active" ? theme.primary : theme.textSecondary} 
         />
@@ -220,7 +220,7 @@ export default function MyBookingsScreen() {
         ]}
         onPress={() => setActiveTab("history")}
       >
-        <Ionicons 
+        <MaterialCommunityIcons 
           name="archive-outline" 
           size={16} 
           color={activeTab === "history" ? theme.primary : theme.textSecondary} 
