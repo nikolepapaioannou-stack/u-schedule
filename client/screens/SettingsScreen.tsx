@@ -169,6 +169,58 @@ export default function SettingsScreen() {
 
   const handleExcelUpload = async () => {
     try {
+      if (Platform.OS === "web") {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".xlsx,.xls";
+        input.onchange = async (e: any) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          
+          setIsUploadingRosters(true);
+          try {
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+              try {
+                const base64 = (event.target?.result as string)?.split(",")[1];
+                if (!base64) {
+                  Alert.alert("Σφάλμα", "Αποτυχία ανάγνωσης αρχείου");
+                  setIsUploadingRosters(false);
+                  return;
+                }
+                
+                const response = await authFetch("/api/proctor-rosters/upload-excel", {
+                  method: "POST",
+                  body: JSON.stringify({ excelData: base64 }),
+                });
+                
+                setHasProctorRosters(true);
+                
+                let message = `Εισήχθησαν ${response.count} εγγραφές επιτηρητών`;
+                if (response.dateRange) {
+                  message += ` από ${response.dateRange.start} έως ${response.dateRange.end}`;
+                }
+                if (response.skippedRows && response.skippedRows.length > 0) {
+                  message += `\n\nΠαραλείφθηκαν ${response.skippedRows.length} γραμμές με σφάλματα.`;
+                }
+                
+                Alert.alert("Επιτυχία", message);
+              } catch (err: any) {
+                Alert.alert("Σφάλμα", err.message || "Αποτυχία μεταφόρτωσης Excel");
+              } finally {
+                setIsUploadingRosters(false);
+              }
+            };
+            reader.readAsDataURL(file);
+          } catch (err: any) {
+            Alert.alert("Σφάλμα", err.message || "Αποτυχία ανάγνωσης αρχείου");
+            setIsUploadingRosters(false);
+          }
+        };
+        input.click();
+        return;
+      }
+      
       const result = await DocumentPicker.getDocumentAsync({
         type: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel"],
       });
