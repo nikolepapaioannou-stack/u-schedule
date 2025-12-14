@@ -72,7 +72,13 @@ function generateToken(): string {
 async function createSession(userId: string): Promise<string> {
   const token = generateToken();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  await storage.createSession(token, userId, expiresAt);
+  try {
+    await storage.createSession(token, userId, expiresAt);
+    console.log(`Session created for user ${userId}, token: ${token.slice(0, 8)}...`);
+  } catch (error) {
+    console.error("Failed to create session:", error);
+    throw error;
+  }
   return token;
 }
 

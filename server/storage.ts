@@ -488,10 +488,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSession(token: string, userId: string, expiresAt: Date): Promise<void> {
-    await db.insert(sessions).values({ token, userId, expiresAt }).onConflictDoUpdate({
-      target: sessions.token,
-      set: { userId, expiresAt },
-    });
+    console.log(`[Storage] Creating session for user ${userId}, token: ${token.slice(0, 8)}...`);
+    try {
+      await db.insert(sessions).values({ token, userId, expiresAt }).onConflictDoUpdate({
+        target: sessions.token,
+        set: { userId, expiresAt },
+      });
+      console.log(`[Storage] Session created successfully`);
+    } catch (error) {
+      console.error(`[Storage] Failed to create session:`, error);
+      throw error;
+    }
   }
 
   async getSession(token: string): Promise<Session | undefined> {
