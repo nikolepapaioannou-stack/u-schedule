@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { reloadAppAsync } from "expo";
 import {
   StyleSheet,
@@ -19,15 +19,59 @@ export type ErrorFallbackProps = {
   resetError: () => void;
 };
 
+const MAX_RETRIES = 3;
+const RETRY_WINDOW_MS = 10000;
+
+let globalRetryState = {
+  count: 0,
+  lastRetryTime: 0,
+  lastErrorMessage: "",
+};
+
+function getRetryCount(errorMessage: string): number {
+  const now = Date.now();
+  if (
+    errorMessage !== globalRetryState.lastErrorMessage ||
+    now - globalRetryState.lastRetryTime > RETRY_WINDOW_MS
+  ) {
+    globalRetryState = {
+      count: 0,
+      lastRetryTime: now,
+      lastErrorMessage: errorMessage,
+    };
+  }
+  return globalRetryState.count;
+}
+
+function incrementRetryCount(): void {
+  globalRetryState.count += 1;
+  globalRetryState.lastRetryTime = Date.now();
+}
+
 export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
   const { theme } = useTheme();
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryCount, setRetryCount] = useState(() => getRetryCount(error.message));
+
+  useEffect(() => {
+    setRetryCount(getRetryCount(error.message));
+  }, [error.message]);
+
+  const hasExceededRetries = retryCount >= MAX_RETRIES;
 
   const handleRestart = async () => {
+    if (isRetrying || hasExceededRetries) return;
+    
+    incrementRetryCount();
+    setRetryCount(globalRetryState.count);
+    setIsRetrying(true);
+    
     try {
       await reloadAppAsync();
     } catch (restartError) {
       console.error("Failed to restart app:", restartError);
+      setIsRetrying(false);
       resetError();
     }
   };
@@ -59,31 +103,37 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
 
       <View style={styles.content}>
         <ThemedText type="h1" style={styles.title}>
-          Something went wrong
+          {hasExceededRetries ? "U-Schedule needs attention" : "Something went wrong"}
         </ThemedText>
 
         <ThemedText type="body" style={styles.message}>
-          Please reload the app to continue.
+          {hasExceededRetries 
+            ? "The app keeps running into issues. Please close and reopen the app, or contact support if the problem persists."
+            : "Please reload the app to continue."
+          }
         </ThemedText>
 
-        <Pressable
-          onPress={handleRestart}
-          style={({ pressed }) => [
-            styles.button,
-            {
-              backgroundColor: theme.link,
-              opacity: pressed ? 0.9 : 1,
-              transform: [{ scale: pressed ? 0.98 : 1 }],
-            },
-          ]}
-        >
-          <ThemedText
-            type="body"
-            style={[styles.buttonText, { color: theme.buttonText }]}
+        {hasExceededRetries ? null : (
+          <Pressable
+            onPress={handleRestart}
+            disabled={isRetrying || hasExceededRetries}
+            style={({ pressed }) => [
+              styles.button,
+              {
+                backgroundColor: theme.link,
+                opacity: (pressed || isRetrying) ? 0.6 : 1,
+                transform: [{ scale: pressed ? 0.98 : 1 }],
+              },
+            ]}
           >
-            Try Again
-          </ThemedText>
-        </Pressable>
+            <ThemedText
+              type="body"
+              style={[styles.buttonText, { color: theme.buttonText }]}
+            >
+              {isRetrying ? "Reloading..." : "Try Again"}
+            </ThemedText>
+          </Pressable>
+        )}
       </View>
 
       {__DEV__ ? (
