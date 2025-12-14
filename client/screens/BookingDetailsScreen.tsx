@@ -137,6 +137,20 @@ export default function BookingDetailsScreen() {
             </ThemedText>
           </View>
 
+          {booking.examStartHour !== null && booking.examStartHour !== undefined ? (
+            <View style={styles.detailRow}>
+              <View style={styles.detailLabel}>
+                <MaterialCommunityIcons name="clock-start" size={18} color={theme.textSecondary} />
+                <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}>
+                  Ώρα Έναρξης
+                </ThemedText>
+              </View>
+              <ThemedText type="body" style={{ fontWeight: "600" }}>
+                {booking.examStartHour.toString().padStart(2, "0")}:00
+              </ThemedText>
+            </View>
+          ) : null}
+
           <View style={styles.detailRow}>
             <View style={styles.detailLabel}>
               <MaterialCommunityIcons name="account-group-outline" size={18} color={theme.textSecondary} />

@@ -23,6 +23,7 @@ interface PendingBooking {
   candidateCount: number;
   bookingDate: string;
   preferredShift: string;
+  examStartHour?: number | null;
   notes?: string;
   createdAt: string;
   user?: {
@@ -169,6 +170,9 @@ export default function PendingApprovalsScreen() {
             <MaterialCommunityIcons name="clock-outline" size={16} color={theme.textSecondary} />
             <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
               {SHIFT_LABELS[item.preferredShift as keyof typeof SHIFT_LABELS] || item.preferredShift}
+              {item.examStartHour !== null && item.examStartHour !== undefined 
+                ? ` - ${item.examStartHour.toString().padStart(2, "0")}:00` 
+                : null}
             </ThemedText>
           </View>
 
