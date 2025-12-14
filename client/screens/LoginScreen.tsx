@@ -4,8 +4,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import * as LocalAuthentication from "expo-local-authentication";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppIcon } from "@/components/AppIcon";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -118,7 +118,7 @@ export default function LoginScreen() {
         <View style={styles.formContainer}>
           {error ? (
             <View style={[styles.errorContainer, { backgroundColor: theme.error + "20" }]}>
-              <MaterialCommunityIcons name="alert-circle-outline" size={16} color={theme.error} />
+              <AppIcon name="alert-circle-outline" size={16} color={theme.error} />
               <ThemedText type="small" style={{ color: theme.error, marginLeft: Spacing.sm }}>
                 {error}
               </ThemedText>
@@ -143,7 +143,7 @@ export default function LoginScreen() {
             secureTextEntry={!showPassword}
             rightIcon={
               <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
-                <MaterialCommunityIcons name={showPassword ? "eye-off-outline" : "eye-outline"} size={24} color={theme.textSecondary} />
+                <AppIcon name={showPassword ? "eye-off-outline" : "eye-outline"} size={24} color={theme.textSecondary} />
               </Pressable>
             }
           />
@@ -157,7 +157,7 @@ export default function LoginScreen() {
               style={[styles.biometricButton, { borderColor: theme.border }]}
               onPress={handleBiometricLogin}
             >
-              <MaterialCommunityIcons name="cellphone" size={24} color={theme.primary} />
+              <AppIcon name="cellphone" size={24} color={theme.primary} />
               <ThemedText type="body" style={{ marginLeft: Spacing.md, color: theme.primary }}>
                 Σύνδεση με δαχτυλικό αποτύπωμα
               </ThemedText>
