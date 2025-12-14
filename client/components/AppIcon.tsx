@@ -1,7 +1,7 @@
 import React from "react";
-import { Feather } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 
-type FeatherIconName = React.ComponentProps<typeof Feather>["name"];
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
 type IconName = 
   | "magnify"
@@ -39,41 +39,41 @@ type IconName =
   | "lock-outline"
   | "refresh";
 
-const iconMapping: Record<IconName, FeatherIconName> = {
-  "magnify": "search",
-  "calendar-outline": "calendar",
-  "bell-outline": "bell",
-  "account-outline": "user",
-  "view-grid-outline": "grid",
-  "clock-outline": "clock",
-  "cog-outline": "settings",
-  "eye-outline": "eye",
-  "eye-off-outline": "eye-off",
-  "alert-circle-outline": "alert-circle",
-  "cellphone": "smartphone",
-  "chevron-right": "chevron-right",
-  "chevron-left": "chevron-left",
-  "check": "check",
-  "close": "x",
-  "plus": "plus",
-  "minus": "minus",
+const iconMapping: Record<IconName, IoniconsName> = {
+  "magnify": "search-outline",
+  "calendar-outline": "calendar-outline",
+  "bell-outline": "notifications-outline",
+  "account-outline": "person-outline",
+  "view-grid-outline": "grid-outline",
+  "clock-outline": "time-outline",
+  "cog-outline": "settings-outline",
+  "eye-outline": "eye-outline",
+  "eye-off-outline": "eye-off-outline",
+  "alert-circle-outline": "alert-circle-outline",
+  "cellphone": "phone-portrait-outline",
+  "chevron-right": "chevron-forward-outline",
+  "chevron-left": "chevron-back-outline",
+  "check": "checkmark-outline",
+  "close": "close-outline",
+  "plus": "add-outline",
+  "minus": "remove-outline",
   "calendar": "calendar",
-  "calendar-check": "check-square",
-  "calendar-clock": "clock",
-  "calendar-remove": "x-square",
-  "file-document-outline": "file-text",
-  "school-outline": "book",
-  "account-group-outline": "users",
-  "timer-outline": "clock",
-  "check-circle-outline": "check-circle",
-  "close-circle-outline": "x-circle",
-  "information-outline": "info",
-  "logout": "log-out",
-  "fingerprint": "lock",
-  "shield-check-outline": "shield",
-  "email-outline": "mail",
-  "lock-outline": "lock",
-  "refresh": "refresh-cw",
+  "calendar-check": "checkmark-circle-outline",
+  "calendar-clock": "time-outline",
+  "calendar-remove": "close-circle-outline",
+  "file-document-outline": "document-text-outline",
+  "school-outline": "school-outline",
+  "account-group-outline": "people-outline",
+  "timer-outline": "timer-outline",
+  "check-circle-outline": "checkmark-circle-outline",
+  "close-circle-outline": "close-circle-outline",
+  "information-outline": "information-circle-outline",
+  "logout": "log-out-outline",
+  "fingerprint": "finger-print-outline",
+  "shield-check-outline": "shield-checkmark-outline",
+  "email-outline": "mail-outline",
+  "lock-outline": "lock-closed-outline",
+  "refresh": "refresh-outline",
 };
 
 interface AppIconProps {
@@ -83,6 +83,6 @@ interface AppIconProps {
 }
 
 export function AppIcon({ name, size = 24, color = "#000" }: AppIconProps) {
-  const featherName = iconMapping[name] || "help-circle";
-  return <Feather name={featherName} size={size} color={color} />;
+  const ioniconsName = iconMapping[name] || "help-circle-outline";
+  return <Ionicons name={ioniconsName} size={size} color={color} />;
 }
