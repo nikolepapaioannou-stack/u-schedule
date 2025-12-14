@@ -74,7 +74,7 @@ export default function UserTabNavigator() {
         options={{
           title: "Ειδοποιήσεις",
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="notifications-outline" size={size} color={color} />
+            <MaterialCommunityIcons name="bell-outline" size={size} color={color} />
           ),
         }}
       />
