@@ -680,6 +680,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(updated);
   });
 
+  app.get("/api/admin/bookings", async (req, res) => {
+    const adminId = await requireAdmin(req, res);
+    if (!adminId) return;
+    
+    const allBookings = await storage.getBookings();
+    const bookingsWithUser = await Promise.all(
+      allBookings.map(async (booking) => {
+        const bookingUser = await storage.getUser(booking.userId);
+        return {
+          ...booking,
+          user: bookingUser ? { email: bookingUser.email, ugrId: bookingUser.ugrId } : null,
+        };
+      })
+    );
+    res.json(bookingsWithUser);
+  });
+
+  app.put("/api/admin/bookings/:id/approve", async (req, res) => {
+    const adminId = await requireAdmin(req, res);
+    if (!adminId) return;
+    
+    const { id } = req.params;
+    const { adminNotes, forceApprove } = req.body;
+    
+    const booking = await storage.getBooking(id);
+    if (!booking) {
+      return res.status(404).json({ error: "Η κράτηση δεν βρέθηκε" });
+    }
+    
+    const updated = await storage.updateBooking(id, {
+      status: "approved",
+      adminNotes: adminNotes || undefined,
+    });
+    
+    res.json(updated);
+  });
+
+  app.put("/api/admin/bookings/:id/reject", async (req, res) => {
+    const adminId = await requireAdmin(req, res);
+    if (!adminId) return;
+    
+    const { id } = req.params;
+    const { reason } = req.body;
+    
+    const updated = await storage.updateBooking(id, {
+      status: "rejected",
+      adminNotes: reason || undefined,
+    });
+    
+    if (!updated) {
+      return res.status(404).json({ error: "Η κράτηση δεν βρέθηκε" });
+    }
+    
+    res.json(updated);
+  });
+
   app.get("/api/admin/stats", async (req, res) => {
     const adminId = await requireAdmin(req, res);
     if (!adminId) return;
