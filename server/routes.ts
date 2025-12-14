@@ -164,8 +164,9 @@ async function getAvailableSlots(
     
     if (!isWeekend(current) && !closedDatesSet.has(dateStr)) {
       const hourlyCapacities = await storage.getHourlyCapacitiesByDate(dateStr);
-      const hourlyCapacityMap = new Map(hourlyCapacities.map(hc => [hc.hour, hc]));
-      console.log(`[DEBUG] Date: ${dateStr}, hourlyCapacities count: ${hourlyCapacities.length}`);
+      // Ensure hour keys are numbers for proper Map lookup
+      const hourlyCapacityMap = new Map(hourlyCapacities.map(hc => [Number(hc.hour), hc]));
+      console.log(`[DEBUG] Date: ${dateStr}, hourlyCapacities count: ${hourlyCapacities.length}, hours: ${hourlyCapacities.map(hc => hc.hour).join(',')}`);
       
       for (const shift of allShifts) {
         const existingBookings = await storage.getBookingsByDateAndShift(dateStr, shift.id);
