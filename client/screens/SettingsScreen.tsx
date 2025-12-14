@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import { StyleSheet, View, Alert, Switch, Pressable, Platform, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 
@@ -173,7 +173,7 @@ export default function SettingsScreen() {
       setIsUploadingRosters(true);
       const file = result.assets[0];
       const base64 = await FileSystem.readAsStringAsync(file.uri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: "base64",
       });
       
       const response = await authFetch("/api/proctor-rosters/upload-excel", {
@@ -376,8 +376,8 @@ export default function SettingsScreen() {
             style={[styles.logoutButton, { borderColor: theme.error }]}
             onPress={handleLogout}
           >
-            <MaterialCommunityIcons name="log-out" size={20} color={theme.error} />
-            <ThemedText type="button" style={{ color: theme.error, marginLeft: Spacing.sm }}>
+            <Feather name="log-out" size={20} color={theme.error} />
+            <ThemedText type="body" style={{ color: theme.error, marginLeft: Spacing.sm }}>
               Αποσύνδεση
             </ThemedText>
           </Pressable>
