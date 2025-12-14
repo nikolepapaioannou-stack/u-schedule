@@ -11,6 +11,7 @@ import { Card } from "@/components/Card";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth, useAuthenticatedFetch } from "@/lib/auth";
+import { useBookingWebSocket } from "@/lib/websocket";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -103,6 +104,13 @@ export default function AdminDashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      fetchDashboardData();
+    }, [fetchDashboardData])
+  );
+
+  useBookingWebSocket(
+    useCallback((event) => {
+      console.log('[Dashboard] Received booking event:', event.type);
       fetchDashboardData();
     }, [fetchDashboardData])
   );

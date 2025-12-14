@@ -1,9 +1,37 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "node:http";
+import { WebSocketServer, WebSocket } from "ws";
 import { storage, initializeDefaultData } from "./storage";
 import { insertUserSchema, loginSchema, searchSlotsSchema, insertBookingSchema, insertClosedDateSchema } from "@shared/schema";
 import { createHash, randomBytes } from "crypto";
 import * as XLSX from "xlsx";
+
+let wss: WebSocketServer | null = null;
+
+interface BookingEvent {
+  type: 'booking:created' | 'booking:submitted' | 'booking:approved' | 'booking:rejected';
+  booking: {
+    id: string;
+    departmentId: string;
+    candidateCount: number;
+    bookingDate: string;
+    status: string;
+    userId: string;
+  };
+  timestamp: string;
+}
+
+function broadcastBookingEvent(event: BookingEvent) {
+  if (!wss) return;
+  
+  const message = JSON.stringify(event);
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
+  console.log(`[WebSocket] Broadcast event: ${event.type} for booking ${event.booking.id}`);
+}
 
 function hashPassword(password: string): string {
   return createHash("sha256").update(password).digest("hex");
@@ -504,6 +532,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       holdExpiresAt: null,
     });
     
+    if (updated) {
+      broadcastBookingEvent({
+        type: 'booking:submitted',
+        booking: {
+          id: updated.id,
+          departmentId: updated.departmentId,
+          candidateCount: updated.candidateCount,
+          bookingDate: updated.bookingDate,
+          status: updated.status,
+          userId: updated.userId,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+    
     res.json(updated);
   });
 
@@ -654,6 +697,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ...overrideData,
     });
     
+    if (updated) {
+      broadcastBookingEvent({
+        type: 'booking:approved',
+        booking: {
+          id: updated.id,
+          departmentId: updated.departmentId,
+          candidateCount: updated.candidateCount,
+          bookingDate: updated.bookingDate,
+          status: updated.status,
+          userId: updated.userId,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+    
     res.json(updated);
   });
 
@@ -676,6 +734,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!updated) {
       return res.status(404).json({ error: "Η κράτηση δεν βρέθηκε" });
     }
+    
+    broadcastBookingEvent({
+      type: 'booking:rejected',
+      booking: {
+        id: updated.id,
+        departmentId: updated.departmentId,
+        candidateCount: updated.candidateCount,
+        bookingDate: updated.bookingDate,
+        status: updated.status,
+        userId: updated.userId,
+      },
+      timestamp: new Date().toISOString(),
+    });
     
     res.json(updated);
   });
@@ -714,6 +785,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       adminNotes: adminNotes || undefined,
     });
     
+    if (updated) {
+      broadcastBookingEvent({
+        type: 'booking:approved',
+        booking: {
+          id: updated.id,
+          departmentId: updated.departmentId,
+          candidateCount: updated.candidateCount,
+          bookingDate: updated.bookingDate,
+          status: updated.status,
+          userId: updated.userId,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+    
     res.json(updated);
   });
 
@@ -732,6 +818,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!updated) {
       return res.status(404).json({ error: "Η κράτηση δεν βρέθηκε" });
     }
+    
+    broadcastBookingEvent({
+      type: 'booking:rejected',
+      booking: {
+        id: updated.id,
+        departmentId: updated.departmentId,
+        candidateCount: updated.candidateCount,
+        bookingDate: updated.bookingDate,
+        status: updated.status,
+        userId: updated.userId,
+      },
+      timestamp: new Date().toISOString(),
+    });
     
     res.json(updated);
   });
@@ -1440,5 +1539,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  
+  wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  wss.on('connection', (ws) => {
+    console.log('[WebSocket] Client connected');
+    
+    ws.on('close', () => {
+      console.log('[WebSocket] Client disconnected');
+    });
+    
+    ws.on('error', (error) => {
+      console.error('[WebSocket] Error:', error);
+    });
+  });
+  
+  console.log('[WebSocket] Server initialized on /ws path');
+  
   return httpServer;
 }
