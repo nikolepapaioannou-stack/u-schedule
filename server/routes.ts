@@ -21,7 +21,22 @@ interface BookingEvent {
   timestamp: string;
 }
 
-function broadcastBookingEvent(event: BookingEvent) {
+interface SettingsEvent {
+  type: 'settings:updated';
+  settings: {
+    workingDaysRule: number;
+    holdDurationMinutes: number;
+    maxCandidatesPerDay: number;
+    candidatesPerProctor: number;
+    reservePercentage: number;
+  };
+  updatedBy: string;
+  timestamp: string;
+}
+
+type WebSocketEvent = BookingEvent | SettingsEvent;
+
+function broadcastEvent(event: WebSocketEvent) {
   if (!wss) return;
   
   const message = JSON.stringify(event);
@@ -30,7 +45,20 @@ function broadcastBookingEvent(event: BookingEvent) {
       client.send(message);
     }
   });
-  console.log(`[WebSocket] Broadcast event: ${event.type} for booking ${event.booking.id}`);
+  console.log(`[WebSocket] Broadcast event: ${event.type}`);
+}
+
+function broadcastBookingEvent(event: BookingEvent) {
+  broadcastEvent(event);
+}
+
+function broadcastSettingsEvent(settings: SettingsEvent['settings'], updatedBy: string) {
+  broadcastEvent({
+    type: 'settings:updated',
+    settings,
+    updatedBy,
+    timestamp: new Date().toISOString(),
+  });
 }
 
 function hashPassword(password: string): string {
@@ -527,6 +555,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!adminId) return;
     
     const updated = await storage.updateSettings(req.body);
+    
+    broadcastSettingsEvent({
+      workingDaysRule: updated.workingDaysRule,
+      holdDurationMinutes: updated.holdDurationMinutes,
+      maxCandidatesPerDay: updated.maxCandidatesPerDay,
+      candidatesPerProctor: updated.candidatesPerProctor,
+      reservePercentage: updated.reservePercentage,
+    }, adminId);
+    
     res.json(updated);
   });
 
