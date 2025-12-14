@@ -138,6 +138,13 @@ export const pushTokens = pgTable("push_tokens", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const sessions = pgTable("sessions", {
+  token: text("token").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
@@ -211,3 +218,4 @@ export type InsertWaitlist = z.infer<typeof insertWaitlistSchema>;
 export type PushToken = typeof pushTokens.$inferSelect;
 export type ProctorRoster = typeof proctorRosters.$inferSelect;
 export type ProctorHourlyCapacity = typeof proctorHourlyCapacities.$inferSelect;
+export type Session = typeof sessions.$inferSelect;

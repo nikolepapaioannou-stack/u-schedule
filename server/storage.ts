@@ -16,6 +16,7 @@ import {
   type PushToken,
   type ProctorRoster,
   type ProctorHourlyCapacity,
+  type Session,
   users,
   shifts,
   closedDates,
@@ -26,6 +27,7 @@ import {
   pushTokens,
   proctorRosters,
   proctorHourlyCapacities,
+  sessions,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -454,6 +456,26 @@ export class DatabaseStorage implements IStorage {
         not(eq(bookings.status, "expired"))
       )
     );
+  }
+
+  async createSession(token: string, userId: string, expiresAt: Date): Promise<void> {
+    await db.insert(sessions).values({ token, userId, expiresAt }).onConflictDoUpdate({
+      target: sessions.token,
+      set: { userId, expiresAt },
+    });
+  }
+
+  async getSession(token: string): Promise<Session | undefined> {
+    const result = await db.select().from(sessions).where(eq(sessions.token, token));
+    return result[0];
+  }
+
+  async deleteSession(token: string): Promise<void> {
+    await db.delete(sessions).where(eq(sessions.token, token));
+  }
+
+  async deleteExpiredSessions(): Promise<void> {
+    await db.delete(sessions).where(lte(sessions.expiresAt, new Date()));
   }
 }
 

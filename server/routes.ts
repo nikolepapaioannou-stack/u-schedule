@@ -13,20 +13,18 @@ function generateToken(): string {
   return randomBytes(32).toString("hex");
 }
 
-const sessions = new Map<string, { userId: string; expiresAt: Date }>();
-
-function createSession(userId: string): string {
+async function createSession(userId: string): Promise<string> {
   const token = generateToken();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  sessions.set(token, { userId, expiresAt });
+  await storage.createSession(token, userId, expiresAt);
   return token;
 }
 
-function validateSession(token: string): string | null {
-  const session = sessions.get(token);
+async function validateSession(token: string): Promise<string | null> {
+  const session = await storage.getSession(token);
   if (!session) return null;
   if (session.expiresAt < new Date()) {
-    sessions.delete(token);
+    await storage.deleteSession(token);
     return null;
   }
   return session.userId;
@@ -289,7 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/logout", async (req, res) => {
     const token = getAuthToken(req);
     if (token) {
-      sessions.delete(token);
+      await storage.deleteSession(token);
     }
     res.json({ success: true });
   });
