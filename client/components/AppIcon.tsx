@@ -1,6 +1,7 @@
 import React from "react";
-import { Platform, Image, StyleSheet, View, ImageSourcePropType } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
+
+type FeatherIconName = React.ComponentProps<typeof Feather>["name"];
 
 type IconName = 
   | "magnify"
@@ -38,9 +39,41 @@ type IconName =
   | "lock-outline"
   | "refresh";
 
-const localIcons: Partial<Record<IconName, ImageSourcePropType>> = {
-  "eye-outline": require("../../assets/images/eye-open.jpg"),
-  "eye-off-outline": require("../../assets/images/eye-closed.jpg"),
+const iconMapping: Record<IconName, FeatherIconName> = {
+  "magnify": "search",
+  "calendar-outline": "calendar",
+  "bell-outline": "bell",
+  "account-outline": "user",
+  "view-grid-outline": "grid",
+  "clock-outline": "clock",
+  "cog-outline": "settings",
+  "eye-outline": "eye",
+  "eye-off-outline": "eye-off",
+  "alert-circle-outline": "alert-circle",
+  "cellphone": "smartphone",
+  "chevron-right": "chevron-right",
+  "chevron-left": "chevron-left",
+  "check": "check",
+  "close": "x",
+  "plus": "plus",
+  "minus": "minus",
+  "calendar": "calendar",
+  "calendar-check": "check-square",
+  "calendar-clock": "clock",
+  "calendar-remove": "x-square",
+  "file-document-outline": "file-text",
+  "school-outline": "book",
+  "account-group-outline": "users",
+  "timer-outline": "clock",
+  "check-circle-outline": "check-circle",
+  "close-circle-outline": "x-circle",
+  "information-outline": "info",
+  "logout": "log-out",
+  "fingerprint": "lock",
+  "shield-check-outline": "shield",
+  "email-outline": "mail",
+  "lock-outline": "lock",
+  "refresh": "refresh-cw",
 };
 
 interface AppIconProps {
@@ -50,27 +83,6 @@ interface AppIconProps {
 }
 
 export function AppIcon({ name, size = 24, color = "#000" }: AppIconProps) {
-  if (Platform.OS === "android") {
-    const localIcon = localIcons[name];
-    if (localIcon) {
-      return (
-        <View style={[styles.container, { width: size, height: size }]}>
-          <Image
-            source={localIcon}
-            style={{ width: size, height: size, tintColor: color }}
-            resizeMode="contain"
-          />
-        </View>
-      );
-    }
-  }
-
-  return <MaterialCommunityIcons name={name} size={size} color={color} />;
+  const featherName = iconMapping[name] || "help-circle";
+  return <Feather name={featherName} size={size} color={color} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
