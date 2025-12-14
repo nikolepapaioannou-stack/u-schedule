@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import { StyleSheet, View, Alert, Switch, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
-import { Feather } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -236,7 +236,7 @@ export default function SettingsScreen() {
             style={[styles.logoutButton, { borderColor: theme.error }]}
             onPress={handleLogout}
           >
-            <Feather name="log-out" size={20} color={theme.error} />
+            <Ionicons name="log-out" size={20} color={theme.error} />
             <ThemedText type="button" style={{ color: theme.error, marginLeft: Spacing.sm }}>
               Αποσύνδεση
             </ThemedText>

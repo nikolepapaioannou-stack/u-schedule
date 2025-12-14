@@ -3,7 +3,7 @@ import { StyleSheet, View, Pressable } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { Feather } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -75,7 +75,7 @@ export default function RegisterScreen() {
         <View style={styles.formContainer}>
           {error ? (
             <View style={[styles.errorContainer, { backgroundColor: theme.error + "20" }]}>
-              <Feather name="alert-circle" size={16} color={theme.error} />
+              <Ionicons name="alert-circle-outline" size={16} color={theme.error} />
               <ThemedText type="small" style={{ color: theme.error, marginLeft: Spacing.sm }}>
                 {error}
               </ThemedText>
@@ -108,7 +108,7 @@ export default function RegisterScreen() {
             secureTextEntry={!showPassword}
             rightIcon={
               <Pressable onPress={() => setShowPassword(!showPassword)}>
-                <Feather name={showPassword ? "eye-off" : "eye"} size={20} color={theme.textSecondary} />
+                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color={theme.textSecondary} />
               </Pressable>
             }
           />

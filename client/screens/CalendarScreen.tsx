@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import { StyleSheet, View, FlatList, RefreshControl, Pressable, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
-import { Feather } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -183,13 +183,13 @@ export default function CalendarScreen() {
   const renderCalendarHeader = () => (
     <View style={styles.calendarHeader}>
       <Pressable onPress={goToPrevMonth} style={styles.navButton}>
-        <Feather name="chevron-left" size={24} color={theme.text} />
+        <Ionicons name="chevron-left" size={24} color={theme.text} />
       </Pressable>
       <ThemedText type="h3">
         {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
       </ThemedText>
       <Pressable onPress={goToNextMonth} style={styles.navButton}>
-        <Feather name="chevron-right" size={24} color={theme.text} />
+        <Ionicons name="chevron-right" size={24} color={theme.text} />
       </Pressable>
     </View>
   );
@@ -279,7 +279,7 @@ export default function CalendarScreen() {
             onPress={() => handleRemoveClosedDate(closedDate)}
           >
             <View style={styles.closedDateInfo}>
-              <Feather name="x-circle" size={16} color={theme.error} />
+              <Ionicons name="close-circle-outline" size={16} color={theme.error} />
               <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
                 {new Date(closedDate.date).toLocaleDateString("el-GR")}
               </ThemedText>
@@ -289,7 +289,7 @@ export default function CalendarScreen() {
                 </ThemedText>
               ) : null}
             </View>
-            <Feather name="trash-2" size={16} color={theme.textSecondary} />
+            <Ionicons name="trash-2" size={16} color={theme.textSecondary} />
           </Pressable>
         ))}
       </View>
@@ -327,7 +327,7 @@ export default function CalendarScreen() {
                 </ThemedText>
                 {isClosedDate(selectedDate) ? (
                   <View style={styles.closedBadge}>
-                    <Feather name="x-circle" size={16} color={theme.error} />
+                    <Ionicons name="close-circle-outline" size={16} color={theme.error} />
                     <ThemedText type="body" style={{ color: theme.error, marginLeft: Spacing.xs }}>
                       Κλειστό
                     </ThemedText>

@@ -3,7 +3,7 @@ import { StyleSheet, View, FlatList, RefreshControl, Pressable } from "react-nat
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Feather } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -107,7 +107,7 @@ export default function AdminDashboardScreen() {
   const StatCard = ({ icon, label, value, color }: { icon: string; label: string; value: number; color: string }) => (
     <Card elevation={1} style={styles.statCard}>
       <View style={[styles.statIcon, { backgroundColor: color + "20" }]}>
-        <Feather name={icon as any} size={24} color={color} />
+        <Ionicons name={icon as any} size={24} color={color} />
       </View>
       <ThemedText type="hero" style={{ marginTop: Spacing.sm }}>{value}</ThemedText>
       <ThemedText type="small" style={{ color: theme.textSecondary }}>{label}</ThemedText>
@@ -133,7 +133,7 @@ export default function AdminDashboardScreen() {
           </ThemedText>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: statusColor + "20" }]}>
-          <Feather name={statusConfig.icon as any} size={12} color={statusColor} />
+          <Ionicons name={statusConfig.icon as any} size={12} color={statusColor} />
           <ThemedText type="caption" style={{ color: statusColor, marginLeft: 4 }}>
             {statusConfig.label}
           </ThemedText>
@@ -164,7 +164,7 @@ export default function AdminDashboardScreen() {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Feather name="inbox" size={48} color={theme.textSecondary} />
+      <Ionicons name="inbox" size={48} color={theme.textSecondary} />
       <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.lg, textAlign: "center" }}>
         Δεν υπάρχουν πρόσφατες κρατήσεις
       </ThemedText>

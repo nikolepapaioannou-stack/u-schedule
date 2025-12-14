@@ -4,7 +4,7 @@ import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Feather } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -32,12 +32,12 @@ interface Booking {
 }
 
 const STATUS_CONFIG = {
-  holding: { label: "Σε Αναμονή", color: "statusPending", icon: "clock" },
-  pending: { label: "Υποβλήθηκε", color: "warning", icon: "send" },
-  approved: { label: "Εγκρίθηκε", color: "statusApproved", icon: "check-circle" },
-  rejected: { label: "Απορρίφθηκε", color: "statusRejected", icon: "x-circle" },
-  expired: { label: "Έληξε", color: "statusCompleted", icon: "clock" },
-  completed: { label: "Ολοκληρώθηκε", color: "statusCompleted", icon: "check" },
+  holding: { label: "Σε Αναμονή", color: "statusPending", icon: "time-outline" },
+  pending: { label: "Υποβλήθηκε", color: "warning", icon: "send-outline" },
+  approved: { label: "Εγκρίθηκε", color: "statusApproved", icon: "checkmark-circle-outline" },
+  rejected: { label: "Απορρίφθηκε", color: "statusRejected", icon: "close-circle-outline" },
+  expired: { label: "Έληξε", color: "statusCompleted", icon: "time-outline" },
+  completed: { label: "Ολοκληρώθηκε", color: "statusCompleted", icon: "checkmark-outline" },
 } as const;
 
 const SHIFT_LABELS = {
@@ -125,7 +125,7 @@ export default function MyBookingsScreen() {
             <ThemedText type="h4">Τμήμα {item.departmentId}</ThemedText>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: statusColor + "20" }]}>
-            <Feather name={statusConfig.icon as any} size={14} color={statusColor} />
+            <Ionicons name={statusConfig.icon as any} size={14} color={statusColor} />
             <ThemedText type="caption" style={{ color: statusColor, marginLeft: 4, fontWeight: "600" }}>
               {statusConfig.label}
             </ThemedText>
@@ -134,21 +134,21 @@ export default function MyBookingsScreen() {
 
         <View style={styles.cardBody}>
           <View style={styles.infoRow}>
-            <Feather name="calendar" size={16} color={theme.textSecondary} />
+            <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
             <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
               {formatDate(item.bookingDate)}
             </ThemedText>
           </View>
 
           <View style={styles.infoRow}>
-            <Feather name="clock" size={16} color={theme.textSecondary} />
+            <Ionicons name="time-outline" size={16} color={theme.textSecondary} />
             <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
               {SHIFT_LABELS[item.preferredShift as keyof typeof SHIFT_LABELS] || item.preferredShift}
             </ThemedText>
           </View>
 
           <View style={styles.infoRow}>
-            <Feather name="users" size={16} color={theme.textSecondary} />
+            <Ionicons name="people-outline" size={16} color={theme.textSecondary} />
             <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
               {item.candidateCount} υποψήφιοι
             </ThemedText>
@@ -174,7 +174,7 @@ export default function MyBookingsScreen() {
     return (
       <View style={styles.emptyState}>
         <View style={[styles.emptyIcon, { backgroundColor: theme.backgroundSecondary }]}>
-          <Feather name={isHistoryTab ? "archive" : "calendar"} size={48} color={theme.textSecondary} />
+          <Ionicons name={isHistoryTab ? "archive-outline" : "calendar-outline"} size={48} color={theme.textSecondary} />
         </View>
         <ThemedText type="h3" style={{ marginTop: Spacing.xl, textAlign: "center" }}>
           {isHistoryTab ? "Δεν υπάρχει ιστορικό" : "Δεν υπάρχουν ενεργές κρατήσεις"}
@@ -197,8 +197,8 @@ export default function MyBookingsScreen() {
         ]}
         onPress={() => setActiveTab("active")}
       >
-        <Feather 
-          name="clock" 
+        <Ionicons 
+          name="time-outline" 
           size={16} 
           color={activeTab === "active" ? theme.primary : theme.textSecondary} 
         />
@@ -220,8 +220,8 @@ export default function MyBookingsScreen() {
         ]}
         onPress={() => setActiveTab("history")}
       >
-        <Feather 
-          name="archive" 
+        <Ionicons 
+          name="archive-outline" 
           size={16} 
           color={activeTab === "history" ? theme.primary : theme.textSecondary} 
         />

@@ -4,7 +4,7 @@ import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Feather } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -101,7 +101,7 @@ export default function SearchScreen() {
 
         <Card variant="glass" style={styles.infoCard}>
           <View style={styles.infoRow}>
-            <Feather name="info" size={20} color={theme.primary} />
+            <Ionicons name="information-circle-outline" size={20} color={theme.primary} />
             <ThemedText type="small" style={{ flex: 1, marginLeft: Spacing.md, color: theme.textSecondary }}>
               Η πρώτη διαθέσιμη ημερομηνία εξέτασης είναι 6 εργάσιμες μέρες μετά τη λήξη των μαθημάτων κατάρτισης.
             </ThemedText>
@@ -111,7 +111,7 @@ export default function SearchScreen() {
         <View style={styles.formContainer}>
           {error ? (
             <View style={[styles.errorContainer, { backgroundColor: theme.error + "20" }]}>
-              <Feather name="alert-circle" size={16} color={theme.error} />
+              <Ionicons name="alert-circle-outline" size={16} color={theme.error} />
               <ThemedText type="small" style={{ color: theme.error, marginLeft: Spacing.sm, flex: 1 }}>
                 {error}
               </ThemedText>
@@ -142,7 +142,7 @@ export default function SearchScreen() {
               style={[styles.dateButton, { borderColor: theme.border, backgroundColor: theme.backgroundDefault }]}
               onPress={() => setShowDatePicker(true)}
             >
-              <Feather name="calendar" size={20} color={theme.textSecondary} />
+              <Ionicons name="calendar-outline" size={20} color={theme.textSecondary} />
               <ThemedText type="body" style={{ marginLeft: Spacing.md }}>
                 {formatDate(courseEndDate)}
               </ThemedText>
