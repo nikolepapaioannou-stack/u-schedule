@@ -34,9 +34,11 @@ Preferred communication style: Simple, everyday language.
 Key tables in `shared/schema.ts`:
 - `users`: Email, password, UGR ID (university identifier), admin flag, biometric preference
 - `shifts`: Time slots with name, start/end times, capacity
-- `bookings`: Links users to dates/shifts with status workflow (holding → pending → approved/rejected)
+- `bookings`: Links users to dates/shifts with status workflow (holding → pending → approved/rejected), includes `examStartHour` for hourly capacity tracking
 - `closedDates`: Admin-defined blackout dates
-- `settings`: System-wide configuration (working days rule, hold duration, daily capacity)
+- `settings`: System-wide configuration (working days rule, hold duration, daily capacity, candidatesPerProctor, reservePercentage)
+- `proctorRosters`: Per-shift proctor counts and capacity
+- `proctorHourlyCapacities`: Per-hour capacity calculated from proctor schedules using 1-hour rule
 
 ### Booking Workflow
 1. User searches for available slots based on department, candidate count, and preferred shift
