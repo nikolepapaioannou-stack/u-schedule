@@ -1029,11 +1029,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         end: sortedDates[sortedDates.length - 1] || "",
       };
       
+      console.log("[Excel Upload] Settings:", JSON.stringify({
+        candidatesPerProctor: appSettings.candidatesPerProctor,
+        reservePercentage: appSettings.reservePercentage,
+      }));
+      
       for (const [dateStr, shiftMap] of shiftCounts) {
         for (const [shiftId, proctorCount] of shiftMap) {
           const reserveProctors = Math.ceil(proctorCount * (appSettings.reservePercentage / 100));
           const effectiveProctors = proctorCount - reserveProctors;
           const effectiveCapacity = effectiveProctors * appSettings.candidatesPerProctor;
+          
+          const shift = shifts.find(s => s.id === shiftId);
+          console.log(`[Excel Upload] Date: ${dateStr}, Shift: ${shift?.name}, Proctors: ${proctorCount}, Reserve: ${reserveProctors}, Effective: ${effectiveProctors}, Capacity: ${effectiveCapacity}`);
           
           processedRosters.push({
             date: dateStr,
