@@ -103,10 +103,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     
     await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-    if (Platform.OS !== "web") {
-      await SecureStore.deleteItemAsync(BIOMETRIC_EMAIL_KEY);
-      await SecureStore.deleteItemAsync(BIOMETRIC_PASSWORD_KEY);
-    }
     setToken(null);
     setUser(null);
   }
@@ -123,6 +119,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       body: JSON.stringify({ enabled }),
     });
+    
+    if (!enabled && Platform.OS !== "web") {
+      await SecureStore.deleteItemAsync(BIOMETRIC_EMAIL_KEY);
+      await SecureStore.deleteItemAsync(BIOMETRIC_PASSWORD_KEY);
+    }
     
     if (user) {
       setUser({ ...user, biometricEnabled: enabled });
