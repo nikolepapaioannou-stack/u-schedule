@@ -68,6 +68,7 @@ function prepareDirectories(timestamp) {
   const dirs = [
     path.join("static-build", timestamp, "_expo", "static", "js", "ios"),
     path.join("static-build", timestamp, "_expo", "static", "js", "android"),
+    path.join("static-build", timestamp, "_expo", "static", "fonts"),
     path.join("static-build", "ios"),
     path.join("static-build", "android"),
   ];
@@ -77,6 +78,46 @@ function prepareDirectories(timestamp) {
   }
 
   console.log("Build:", timestamp);
+}
+
+function copyVectorIconFonts(timestamp) {
+  console.log("Copying vector icon fonts...");
+  
+  const fontsSourceDir = path.join(
+    "node_modules",
+    "@expo",
+    "vector-icons",
+    "build",
+    "vendor",
+    "react-native-vector-icons",
+    "Fonts"
+  );
+  
+  const fontsDestDir = path.join(
+    "static-build",
+    timestamp,
+    "_expo",
+    "static",
+    "fonts"
+  );
+  
+  if (!fs.existsSync(fontsSourceDir)) {
+    console.warn("Warning: Vector icon fonts directory not found");
+    return 0;
+  }
+  
+  const fontFiles = fs.readdirSync(fontsSourceDir).filter(f => f.endsWith(".ttf"));
+  let copiedCount = 0;
+  
+  for (const fontFile of fontFiles) {
+    const src = path.join(fontsSourceDir, fontFile);
+    const dest = path.join(fontsDestDir, fontFile);
+    fs.copyFileSync(src, dest);
+    copiedCount++;
+  }
+  
+  console.log(`Copied ${copiedCount} font files`);
+  return copiedCount;
 }
 
 function clearMetroCache() {
@@ -504,6 +545,7 @@ async function main() {
   const timestamp = `${Date.now()}-${process.pid}`;
 
   prepareDirectories(timestamp);
+  copyVectorIconFonts(timestamp);
   clearMetroCache();
 
   await startMetro(domain);
