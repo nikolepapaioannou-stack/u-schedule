@@ -427,7 +427,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const user = await storage.getUser(userId);
     if (user?.isAdmin) {
       const allBookings = await storage.getBookings();
-      return res.json(allBookings);
+      const bookingsWithUser = await Promise.all(
+        allBookings.map(async (booking) => {
+          const bookingUser = await storage.getUser(booking.userId);
+          return {
+            ...booking,
+            user: bookingUser ? { email: bookingUser.email, ugrId: bookingUser.ugrId } : null,
+          };
+        })
+      );
+      return res.json(bookingsWithUser);
     }
     
     const userBookings = await storage.getBookingsByUserId(userId);
