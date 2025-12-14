@@ -59,7 +59,7 @@ export default function AdminDashboardScreen() {
   const fetchDashboardData = useCallback(async () => {
     try {
       const [bookingsData, statsData] = await Promise.all([
-        authFetch("/api/admin/bookings"),
+        authFetch("/api/bookings"),
         authFetch("/api/admin/stats").catch(() => null),
       ]);
 
