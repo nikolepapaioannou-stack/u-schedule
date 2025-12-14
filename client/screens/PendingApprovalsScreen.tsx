@@ -176,14 +176,12 @@ export default function PendingApprovalsScreen() {
             </ThemedText>
           </View>
 
-          {item.user ? (
-            <View style={styles.infoRow}>
-              <MaterialCommunityIcons name="account-outline" size={16} color={theme.textSecondary} />
-              <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
-                {item.user.ugrId}
-              </ThemedText>
-            </View>
-          ) : null}
+          <View style={styles.infoRow}>
+            <MaterialCommunityIcons name="map-marker-outline" size={16} color={theme.textSecondary} />
+            <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
+              Κέντρο: {item.user?.ugrId || "Μη διαθέσιμο"}
+            </ThemedText>
+          </View>
 
           {item.notes ? (
             <View style={[styles.notesContainer, { backgroundColor: theme.backgroundSecondary }]}>
