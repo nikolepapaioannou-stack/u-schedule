@@ -9,7 +9,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/Card";
 import { useTheme } from "@/hooks/useTheme";
-import { apiRequest } from "@/lib/query-client";
+import { useAuthenticatedFetch } from "@/lib/auth";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
 interface Notification {
@@ -36,15 +36,17 @@ export default function NotificationsScreen() {
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const queryClient = useQueryClient();
+  const authFetch = useAuthenticatedFetch();
 
   const { data: notifications = [], isLoading, refetch, isRefetching } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
+    queryFn: () => authFetch("/api/notifications"),
     refetchOnWindowFocus: true,
   });
 
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("PUT", `/api/notifications/${id}/read`);
+      await authFetch(`/api/notifications/${id}/read`, { method: "PUT" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
@@ -54,7 +56,7 @@ export default function NotificationsScreen() {
 
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("PUT", "/api/notifications/read-all");
+      await authFetch("/api/notifications/read-all", { method: "PUT" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
