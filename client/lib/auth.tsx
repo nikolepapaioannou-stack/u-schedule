@@ -42,8 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const storedToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
       if (storedToken) {
-        setToken(storedToken);
-        await fetchUser(storedToken);
+        // Validate the token BEFORE setting it in state
+        // This prevents race conditions where invalid token triggers API calls
+        const isValid = await validateAndLoadUser(storedToken);
+        if (!isValid) {
+          console.log("[Auth] Stored token invalid, clearing...");
+          await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+        }
       }
     } catch (error) {
       console.error("Failed to load auth:", error);
@@ -52,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function fetchUser(authToken: string) {
+  async function validateAndLoadUser(authToken: string): Promise<boolean> {
     try {
       const baseUrl = getApiUrl();
       const response = await fetch(new URL("/api/auth/me", baseUrl).toString(), {
@@ -61,14 +66,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (response.ok) {
         const userData = await response.json();
+        // Only set token and user AFTER validation succeeds
+        setToken(authToken);
         setUser(userData);
+        return true;
       } else {
-        await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-        setToken(null);
-        setUser(null);
+        console.log("[Auth] Token validation failed with status:", response.status);
+        return false;
       }
     } catch (error) {
-      console.error("Failed to fetch user:", error);
+      console.error("Failed to validate token:", error);
+      return false;
     }
   }
 
@@ -215,6 +223,56 @@ export function useAuthenticatedFetch() {
         
         // Handle 401 - session expired or invalid
         if (response.status === 401) {
+          console.log("[authFetch] Got 401, checking for valid token in storage...");
+          
+          // Before logging out, check if there's a valid token in AsyncStorage
+          // This handles race conditions where token state hasn't propagated yet
+          try {
+            const freshToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+            console.log("[authFetch] Fresh token check:", freshToken ? freshToken.slice(0, 8) + "..." : "none");
+            console.log("[authFetch] Current token was:", currentToken?.slice(0, 8) + "...");
+            
+            if (freshToken) {
+              // Always try with fresh token from storage on 401
+              // The stored token might be different OR we might have a network/timing issue
+              console.log("[authFetch] Retrying request with fresh token from storage...");
+              
+              const retryResponse = await fetch(fullUrl, {
+                ...options,
+                headers: {
+                  ...options.headers,
+                  Authorization: `Bearer ${freshToken}`,
+                  "Content-Type": "application/json",
+                },
+              });
+              
+              console.log("[authFetch] Retry response status:", retryResponse.status);
+              
+              if (retryResponse.ok) {
+                const data = await retryResponse.json();
+                console.log("[authFetch] Retry with fresh token succeeded");
+                return data;
+              }
+              
+              if (retryResponse.status === 403) {
+                const error = await retryResponse.json().catch(() => ({ error: "Δεν έχετε δικαιώματα για αυτή την ενέργεια" }));
+                throw new Error(error.error || "Δεν έχετε δικαιώματα για αυτή την ενέργεια");
+              }
+              
+              // If retry also returns 401, the session is truly invalid
+              if (retryResponse.status === 401) {
+                console.log("[authFetch] Retry also returned 401, session truly expired");
+              }
+            }
+          } catch (retryError) {
+            // If the retry error is a 403, propagate it
+            if (retryError instanceof Error && retryError.message.includes("δικαιώματα")) {
+              throw retryError;
+            }
+            console.log("[authFetch] Retry failed:", retryError);
+          }
+          
+          // Only logout if retry also failed
           await logout();
           throw new Error("Η συνεδρία έληξε - παρακαλώ συνδεθείτε ξανά");
         }

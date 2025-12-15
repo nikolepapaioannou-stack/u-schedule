@@ -83,9 +83,15 @@ async function createSession(userId: string): Promise<string> {
 }
 
 async function validateSession(token: string): Promise<string | null> {
+  console.log(`[validateSession] Looking up token: ${token.slice(0, 8)}...`);
   const session = await storage.getSession(token);
-  if (!session) return null;
+  if (!session) {
+    console.log(`[validateSession] No session found for token: ${token.slice(0, 8)}...`);
+    return null;
+  }
+  console.log(`[validateSession] Found session for user: ${session.userId}, expires: ${session.expiresAt}`);
   if (session.expiresAt < new Date()) {
+    console.log(`[validateSession] Session expired, deleting...`);
     await storage.deleteSession(token);
     return null;
   }
