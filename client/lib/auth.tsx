@@ -166,20 +166,20 @@ export function useAuth() {
 }
 
 export function useAuthenticatedFetch() {
-  const { logout } = useAuth();
+  const { logout, token, isLoading } = useAuth();
   
   return useCallback(async (path: string, options: RequestInit = {}, retries = 2) => {
-    // Always read token directly from AsyncStorage to ensure we have the latest
-    let currentToken: string | null = null;
-    try {
-      currentToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-    } catch (e) {
-      console.error("Failed to read token from storage:", e);
+    // Wait briefly if auth is still loading
+    if (isLoading) {
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
     
+    // Use token from context state - it's already been restored by the auth provider
+    const currentToken = token;
+    
     if (!currentToken) {
-      // No token - force logout to redirect to login
-      await logout();
+      // No token after loading complete - redirect to login but don't force logout
+      // This prevents logout cascade when auth hasn't loaded yet
       throw new Error("Δεν υπάρχει συνεδρία - παρακαλώ συνδεθείτε ξανά");
     }
     
@@ -232,5 +232,5 @@ export function useAuthenticatedFetch() {
     }
     
     throw lastError || new Error("Σφάλμα αιτήματος");
-  }, [logout]);
+  }, [logout, token, isLoading]);
 }
