@@ -26,6 +26,17 @@ interface DayBookings {
   shifts: { morning: number; midday: number; afternoon: number };
 }
 
+interface BookingDetail {
+  id: string;
+  departmentId: string;
+  candidateCount: number;
+  examStartHour: number | null;
+  preferredShift: string;
+  bookingDate: string;
+  status: string;
+  user: { email: string; ugrId: string } | null;
+}
+
 const WEEKDAYS = ["Κυ", "Δε", "Τρ", "Τε", "Πε", "Πα", "Σα"];
 const MONTHS = [
   "Ιανουάριος", "Φεβρουάριος", "Μάρτιος", "Απρίλιος", "Μάιος", "Ιούνιος",
@@ -40,6 +51,7 @@ export default function CalendarScreen() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [closedDates, setClosedDates] = useState<ClosedDate[]>([]);
   const [dayBookings, setDayBookings] = useState<DayBookings[]>([]);
+  const [allBookings, setAllBookings] = useState<BookingDetail[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -52,6 +64,7 @@ export default function CalendarScreen() {
       ]);
 
       setClosedDates(closedData || []);
+      setAllBookings(bookingsData || []);
 
       const bookingsByDate: Record<string, DayBookings> = {};
       (bookingsData || []).forEach((b: any) => {
@@ -178,6 +191,15 @@ export default function CalendarScreen() {
 
   const getBookingsForDate = (dateStr: string) => {
     return dayBookings.find((b) => b.date === dateStr);
+  };
+
+  const getApprovedBookingsForDate = (dateStr: string): BookingDetail[] => {
+    return allBookings.filter(b => b.bookingDate === dateStr && b.status === 'approved');
+  };
+
+  const formatExamTime = (hour: number | null): string => {
+    if (hour === null) return "-";
+    return `${hour.toString().padStart(2, "0")}:00`;
   };
 
   const renderCalendarHeader = () => (
@@ -337,6 +359,49 @@ export default function CalendarScreen() {
                     Κλείσιμο Ημερομηνίας
                   </Button>
                 )}
+                
+                {(() => {
+                  const approvedBookings = getApprovedBookingsForDate(selectedDate);
+                  if (approvedBookings.length === 0) return null;
+                  return (
+                    <View style={styles.approvedBookingsSection}>
+                      <ThemedText type="h5" style={{ marginBottom: Spacing.sm }}>
+                        Εγκεκριμένες Κρατήσεις ({approvedBookings.length})
+                      </ThemedText>
+                      {approvedBookings.map((booking) => (
+                        <View 
+                          key={booking.id} 
+                          style={[styles.bookingItem, { backgroundColor: theme.backgroundSecondary }]}
+                        >
+                          <View style={styles.bookingRow}>
+                            <ThemedText type="caption" style={{ color: theme.textSecondary }}>UGR:</ThemedText>
+                            <ThemedText type="body" style={{ marginLeft: Spacing.xs }}>
+                              {booking.user?.ugrId || "-"}
+                            </ThemedText>
+                          </View>
+                          <View style={styles.bookingRow}>
+                            <ThemedText type="caption" style={{ color: theme.textSecondary }}>Ώρα:</ThemedText>
+                            <ThemedText type="body" style={{ marginLeft: Spacing.xs }}>
+                              {formatExamTime(booking.examStartHour)}
+                            </ThemedText>
+                          </View>
+                          <View style={styles.bookingRow}>
+                            <ThemedText type="caption" style={{ color: theme.textSecondary }}>Τμήμα:</ThemedText>
+                            <ThemedText type="body" style={{ marginLeft: Spacing.xs }}>
+                              {booking.departmentId}
+                            </ThemedText>
+                          </View>
+                          <View style={styles.bookingRow}>
+                            <ThemedText type="caption" style={{ color: theme.textSecondary }}>Υποψήφιοι:</ThemedText>
+                            <ThemedText type="body" style={{ marginLeft: Spacing.xs }}>
+                              {booking.candidateCount}
+                            </ThemedText>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })()}
               </Card>
             ) : null}
 
@@ -432,5 +497,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+  },
+  approvedBookingsSection: {
+    marginTop: Spacing.lg,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(128, 128, 128, 0.2)",
+  },
+  bookingItem: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    marginBottom: Spacing.sm,
+  },
+  bookingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.xs,
   },
 });
