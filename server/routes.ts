@@ -334,13 +334,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const parsed = loginSchema.safeParse(req.body);
       if (!parsed.success) {
+        console.log("[Login] Invalid input:", parsed.error);
         return res.status(400).json({ error: "Μη έγκυρα στοιχεία σύνδεσης" });
       }
       
       const { email, password } = parsed.data;
-      const user = await storage.getUserByEmail(email);
+      console.log("[Login] Attempting login for:", email);
       
-      if (!user || user.password !== hashPassword(password)) {
+      const user = await storage.getUserByEmail(email);
+      console.log("[Login] User found:", user ? user.email : "NOT FOUND");
+      
+      const inputHash = hashPassword(password);
+      console.log("[Login] Input password hash:", inputHash);
+      console.log("[Login] Stored password hash:", user?.password);
+      console.log("[Login] Hashes match:", user?.password === inputHash);
+      
+      if (!user || user.password !== inputHash) {
         return res.status(401).json({ error: "Λάθος email ή κωδικός" });
       }
       
