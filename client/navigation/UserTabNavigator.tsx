@@ -2,8 +2,10 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet } from "react-native";
+import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "@/hooks/useTheme";
 import { AppIcon } from "@/components/AppIcon";
+import { useAuthenticatedFetch } from "@/lib/auth";
 
 import SearchScreen from "@/screens/SearchScreen";
 import MyBookingsScreen from "@/screens/MyBookingsScreen";
@@ -23,6 +25,13 @@ const Tab = createBottomTabNavigator<UserTabParamList>();
 
 export default function UserTabNavigator() {
   const { theme, isDark } = useTheme();
+  const authFetch = useAuthenticatedFetch();
+  
+  const { data: unreadCount = 0 } = useQuery<number>({
+    queryKey: ["/api/notifications/unread-count"],
+    queryFn: () => authFetch("/api/notifications/unread-count"),
+    refetchInterval: 30000,
+  });
 
   return (
     <Tab.Navigator
@@ -88,6 +97,8 @@ export default function UserTabNavigator() {
           tabBarIcon: ({ color, size }) => (
             <AppIcon name="bell-outline" size={size} color={color} />
           ),
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadgeStyle: { backgroundColor: theme.primary },
         }}
       />
       <Tab.Screen

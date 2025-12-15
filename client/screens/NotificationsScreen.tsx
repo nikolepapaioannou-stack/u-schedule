@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View, FlatList, RefreshControl, Pressable, ViewStyle } from "react-native";
+import { StyleSheet, View, FlatList, RefreshControl, ViewStyle, Pressable } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -102,44 +102,47 @@ export default function NotificationsScreen() {
     };
 
     return (
-      <Pressable onPress={() => !item.isRead && handleMarkAsRead(item.id)}>
-        <Card
-          elevation={isUnread ? 2 : 1}
-          style={cardStyle}
-        >
-          <View style={styles.cardContent}>
-            <View style={[
-              styles.iconContainer,
-              { backgroundColor: isUnread ? theme.primary + "20" : theme.backgroundSecondary }
-            ]}>
-              <MaterialCommunityIcons 
-                name={iconName as any} 
-                size={20} 
-                color={isUnread ? theme.primary : theme.textSecondary} 
-              />
-            </View>
-            <View style={styles.textContent}>
-              <View style={styles.titleRow}>
-                <ThemedText 
-                  type="body" 
-                  style={[styles.title, isUnread && { fontWeight: "700" }]}
-                >
-                  {item.title}
-                </ThemedText>
-                {isUnread ? (
-                  <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} />
-                ) : null}
-              </View>
-              <ThemedText type="small" style={styles.message}>
-                {item.message}
-              </ThemedText>
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                {formatDate(item.createdAt)}
-              </ThemedText>
-            </View>
+      <Card
+        elevation={isUnread ? 2 : 1}
+        style={cardStyle}
+        onPress={() => {
+          if (!item.isRead) {
+            handleMarkAsRead(item.id);
+          }
+        }}
+      >
+        <View style={styles.cardContent}>
+          <View style={[
+            styles.iconContainer,
+            { backgroundColor: isUnread ? theme.primary + "20" : theme.backgroundSecondary }
+          ]}>
+            <MaterialCommunityIcons 
+              name={iconName as any} 
+              size={20} 
+              color={isUnread ? theme.primary : theme.textSecondary} 
+            />
           </View>
-        </Card>
-      </Pressable>
+          <View style={styles.textContent}>
+            <View style={styles.titleRow}>
+              <ThemedText 
+                type="body" 
+                style={[styles.title, isUnread && { fontWeight: "700" }]}
+              >
+                {item.title}
+              </ThemedText>
+              {isUnread ? (
+                <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} />
+              ) : null}
+            </View>
+            <ThemedText type="small" style={styles.message}>
+              {item.message}
+            </ThemedText>
+            <ThemedText type="small" style={{ color: theme.textSecondary }}>
+              {formatDate(item.createdAt)}
+            </ThemedText>
+          </View>
+        </View>
+      </Card>
     );
   };
 
