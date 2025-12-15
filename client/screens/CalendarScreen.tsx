@@ -59,7 +59,7 @@ export default function CalendarScreen() {
   const fetchCalendarData = useCallback(async () => {
     try {
       const [closedData, bookingsData] = await Promise.all([
-        authFetch("/api/admin/closed-dates"),
+        authFetch("/api/closed-dates"),
         authFetch("/api/admin/bookings"),
       ]);
 
@@ -123,7 +123,7 @@ export default function CalendarScreen() {
           text: "Κλείσιμο",
           onPress: async (reason?: string) => {
             try {
-              await authFetch("/api/admin/closed-dates", {
+              await authFetch("/api/closed-dates", {
                 method: "POST",
                 body: JSON.stringify({ date: selectedDate, reason }),
               });
@@ -150,7 +150,7 @@ export default function CalendarScreen() {
           text: "Άνοιγμα",
           onPress: async () => {
             try {
-              await authFetch(`/api/admin/closed-dates/${closedDate.id}`, { method: "DELETE" });
+              await authFetch(`/api/closed-dates/${closedDate.id}`, { method: "DELETE" });
               fetchCalendarData();
               Alert.alert("Επιτυχία", "Η ημερομηνία άνοιξε");
             } catch (err: any) {
@@ -311,7 +311,7 @@ export default function CalendarScreen() {
                 </ThemedText>
               ) : null}
             </View>
-            <MaterialCommunityIcons name="trash-2" size={16} color={theme.textSecondary} />
+            <MaterialCommunityIcons name="delete-outline" size={16} color={theme.textSecondary} />
           </Pressable>
         ))}
       </View>
@@ -365,7 +365,7 @@ export default function CalendarScreen() {
                   if (approvedBookings.length === 0) return null;
                   return (
                     <View style={styles.approvedBookingsSection}>
-                      <ThemedText type="h5" style={{ marginBottom: Spacing.sm }}>
+                      <ThemedText type="h4" style={{ marginBottom: Spacing.sm }}>
                         Εγκεκριμένες Κρατήσεις ({approvedBookings.length})
                       </ThemedText>
                       {approvedBookings.map((booking) => (
