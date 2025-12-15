@@ -27,11 +27,12 @@ export default function UserTabNavigator() {
   const { theme, isDark } = useTheme();
   const authFetch = useAuthenticatedFetch();
   
-  const { data: unreadCount = 0 } = useQuery<number>({
+  const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ["/api/notifications/unread-count"],
     queryFn: () => authFetch("/api/notifications/unread-count"),
     refetchInterval: 30000,
   });
+  const unreadCount = unreadData?.count || 0;
 
   return (
     <Tab.Navigator
