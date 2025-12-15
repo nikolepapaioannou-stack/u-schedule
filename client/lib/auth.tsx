@@ -169,32 +169,40 @@ export function useAuthenticatedFetch() {
   const { logout, token: contextToken, isLoading } = useAuth();
   
   return useCallback(async (path: string, options: RequestInit = {}, retries = 2) => {
+    console.log("[authFetch] Starting request to:", path, "method:", options.method || "GET");
+    
     // Wait briefly if auth is still loading
     if (isLoading) {
+      console.log("[authFetch] Auth still loading, waiting...");
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     
     // Try context token first, fall back to AsyncStorage for fresh reads
     let currentToken = contextToken;
     if (!currentToken) {
+      console.log("[authFetch] No context token, trying AsyncStorage...");
       try {
         currentToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+        console.log("[authFetch] AsyncStorage token:", currentToken ? "found" : "not found");
       } catch (e) {
-        console.error("Failed to read token from storage:", e);
+        console.error("[authFetch] Failed to read token from storage:", e);
       }
     }
     
     if (!currentToken) {
-      // No token after loading complete - don't force logout, just throw error
+      console.error("[authFetch] No token available!");
       throw new Error("Δεν υπάρχει συνεδρία - παρακαλώ συνδεθείτε ξανά");
     }
     
     const baseUrl = getApiUrl();
+    const fullUrl = new URL(path, baseUrl).toString();
+    console.log("[authFetch] Making request to:", fullUrl);
+    
     let lastError: Error | null = null;
     
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const response = await fetch(new URL(path, baseUrl).toString(), {
+        const response = await fetch(fullUrl, {
           ...options,
           headers: {
             ...options.headers,
@@ -202,6 +210,8 @@ export function useAuthenticatedFetch() {
             "Content-Type": "application/json",
           },
         });
+        
+        console.log("[authFetch] Response status:", response.status);
         
         // Handle 401 - session expired or invalid
         if (response.status === 401) {
@@ -217,11 +227,15 @@ export function useAuthenticatedFetch() {
         
         if (!response.ok) {
           const error = await response.json().catch(() => ({ error: "Σφάλμα δικτύου" }));
+          console.error("[authFetch] Error response:", error);
           throw new Error(error.error || "Σφάλμα αιτήματος");
         }
         
-        return response.json();
+        const data = await response.json();
+        console.log("[authFetch] Success, data received");
+        return data;
       } catch (e) {
+        console.error("[authFetch] Caught error:", e);
         lastError = e instanceof Error ? e : new Error(String(e));
         // Retry on network errors (different messages on web vs native)
         const isNetworkError = 
@@ -230,6 +244,7 @@ export function useAuthenticatedFetch() {
           lastError.message.includes("Network request failed") ||
           lastError.message.includes("network");
         if (attempt < retries && isNetworkError) {
+          console.log("[authFetch] Network error, retrying...", attempt + 1);
           await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
           continue;
         }

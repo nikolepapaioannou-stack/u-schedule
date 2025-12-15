@@ -108,6 +108,7 @@ export default function UserManagementScreen() {
 
     setIsCreating(true);
     try {
+      console.log("[DEBUG] Creating user with:", { email: newEmail, ugrId: newUgrId, role: newRole });
       const response = await authFetch("/api/admin/users", {
         method: "POST",
         body: JSON.stringify({
@@ -117,6 +118,7 @@ export default function UserManagementScreen() {
           role: newRole,
         }),
       });
+      console.log("[DEBUG] Create user response:", response);
 
       if (response) {
         Alert.alert("Επιτυχία", "Ο χρήστης δημιουργήθηκε επιτυχώς");
@@ -128,8 +130,11 @@ export default function UserManagementScreen() {
         fetchUsers();
       }
     } catch (error: any) {
-      console.error("Failed to create user:", error);
-      Alert.alert("Σφάλμα", error.message || "Δεν ήταν δυνατή η δημιουργία του χρήστη");
+      console.error("[DEBUG] Failed to create user - error type:", typeof error);
+      console.error("[DEBUG] Failed to create user - error name:", error?.name);
+      console.error("[DEBUG] Failed to create user - error message:", error?.message);
+      console.error("[DEBUG] Failed to create user - full error:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      Alert.alert("Σφάλμα", error?.message || "Δεν ήταν δυνατή η δημιουργία του χρήστη");
     } finally {
       setIsCreating(false);
     }
