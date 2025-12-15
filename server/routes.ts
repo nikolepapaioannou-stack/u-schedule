@@ -809,6 +809,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         timestamp: new Date().toISOString(),
       });
+      
+      await storage.createNotification({
+        userId,
+        type: "booking_submitted",
+        title: "Κράτηση Υποβλήθηκε",
+        message: `Η κράτησή σας για το τμήμα ${updated.departmentId} υποβλήθηκε και αναμένει έγκριση.`,
+        bookingId: updated.id,
+      });
     }
     
     res.json(updated);
@@ -974,6 +982,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         timestamp: new Date().toISOString(),
       });
+      
+      await storage.createNotification({
+        userId: updated.userId,
+        type: "booking_approved",
+        title: "Κράτηση Εγκρίθηκε",
+        message: `Η κράτησή σας για το τμήμα ${updated.departmentId} εγκρίθηκε για ${new Date(updated.bookingDate).toLocaleDateString("el-GR")}.`,
+        bookingId: updated.id,
+      });
     }
     
     res.json(updated);
@@ -1010,6 +1026,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: updated.userId,
       },
       timestamp: new Date().toISOString(),
+    });
+    
+    await storage.createNotification({
+      userId: updated.userId,
+      type: "booking_rejected",
+      title: "Κράτηση Απορρίφθηκε",
+      message: `Η κράτησή σας για το τμήμα ${updated.departmentId} απορρίφθηκε.${adminNotes ? ` Λόγος: ${adminNotes}` : ''}`,
+      bookingId: updated.id,
     });
     
     res.json(updated);
@@ -1062,6 +1086,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         timestamp: new Date().toISOString(),
       });
+      
+      await storage.createNotification({
+        userId: updated.userId,
+        type: "booking_approved",
+        title: "Κράτηση Εγκρίθηκε",
+        message: `Η κράτησή σας για το τμήμα ${updated.departmentId} εγκρίθηκε για ${new Date(updated.bookingDate).toLocaleDateString("el-GR")}.`,
+        bookingId: updated.id,
+      });
     }
     
     res.json(updated);
@@ -1094,6 +1126,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: updated.userId,
       },
       timestamp: new Date().toISOString(),
+    });
+    
+    await storage.createNotification({
+      userId: updated.userId,
+      type: "booking_rejected",
+      title: "Κράτηση Απορρίφθηκε",
+      message: `Η κράτησή σας για το τμήμα ${updated.departmentId} απορρίφθηκε.${reason ? ` Λόγος: ${reason}` : ''}`,
+      bookingId: updated.id,
     });
     
     res.json(updated);

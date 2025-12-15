@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { StyleSheet, View, Alert } from "react-native";
+import { StyleSheet, View, Alert, ScrollView } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import Animated, { useAnimatedStyle, useSharedValue, withTiming, withRepeat, withSequence } from "react-native-reanimated";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming, withRepeat, withSequence, withSpring, FadeIn, ZoomIn } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -38,7 +38,9 @@ export default function HoldCountdownScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [booking, setBooking] = useState<any>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
   const pulseOpacity = useSharedValue(1);
+  const successScale = useSharedValue(0);
 
   const timerRef = useRef<NodeJS.Timeout>();
 
@@ -109,11 +111,15 @@ export default function HoldCountdownScreen() {
         body: JSON.stringify({ notes }),
       });
 
-      Alert.alert(
-        "Επιτυχής Υποβολή",
-        "Η κράτησή σας υποβλήθηκε και αναμένει έγκριση από τον διαχειριστή.",
-        [{ text: "OK", onPress: () => navigation.navigate("UserMain") }]
-      );
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      setShowSuccess(true);
+      successScale.value = withSpring(1, { damping: 12, stiffness: 100 });
+      
+      setTimeout(() => {
+        navigation.navigate("UserMain");
+      }, 2500);
     } catch (err: any) {
       Alert.alert("Σφάλμα", err.message || "Αποτυχία υποβολής κράτησης");
     } finally {
@@ -162,8 +168,54 @@ export default function HoldCountdownScreen() {
     opacity: timeLeft <= 180 ? pulseOpacity.value : 1,
   }));
 
+  const successAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: successScale.value }],
+  }));
+
   const progress = timeLeft / HOLD_DURATION_SECONDS;
   const strokeDashoffset = 377 * (1 - progress);
+
+  if (showSuccess) {
+    return (
+      <ThemedView style={styles.container}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.successContainer,
+            { paddingTop: headerHeight + Spacing.xl, paddingBottom: insets.bottom + Spacing.xl },
+          ]}
+        >
+          <Animated.View style={[styles.successIconContainer, successAnimatedStyle]}>
+            <View style={[styles.successCircle, { backgroundColor: theme.success }]}>
+              <Feather name="check" size={64} color="#FFFFFF" />
+            </View>
+          </Animated.View>
+          
+          <Animated.View entering={FadeIn.delay(300).duration(500)}>
+            <ThemedText type="h2" style={styles.successTitle}>
+              Επιτυχής Υποβολή
+            </ThemedText>
+          </Animated.View>
+          
+          <Animated.View entering={FadeIn.delay(500).duration(500)}>
+            <ThemedText type="body" style={[styles.successMessage, { color: theme.textSecondary }]}>
+              Η κράτησή σας υποβλήθηκε επιτυχώς και αναμένει έγκριση από τον διαχειριστή.
+            </ThemedText>
+          </Animated.View>
+          
+          <Animated.View entering={FadeIn.delay(700).duration(500)}>
+            <Card elevation={1} style={styles.successCard}>
+              <View style={styles.successCardRow}>
+                <MaterialCommunityIcons name="clock-outline" size={20} color={theme.primary} />
+                <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
+                  Θα ενημερωθείτε για την απόφαση
+                </ThemedText>
+              </View>
+            </Card>
+          </Animated.View>
+        </ScrollView>
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -312,5 +364,38 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     gap: Spacing.md,
+  },
+  successContainer: {
+    flexGrow: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: Spacing.xl,
+  },
+  successIconContainer: {
+    marginBottom: Spacing["2xl"],
+  },
+  successCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  successTitle: {
+    textAlign: "center",
+    marginBottom: Spacing.md,
+  },
+  successMessage: {
+    textAlign: "center",
+    marginBottom: Spacing["2xl"],
+    paddingHorizontal: Spacing.lg,
+  },
+  successCard: {
+    width: "100%",
+    alignItems: "center",
+  },
+  successCardRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
 });
