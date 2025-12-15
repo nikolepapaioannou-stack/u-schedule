@@ -262,7 +262,7 @@ export default function HoldCountdownScreen() {
           <Card elevation={1} style={styles.summaryCard}>
             <ThemedText type="h4">Στοιχεία Κράτησης</ThemedText>
             <View style={styles.summaryRow}>
-              <MaterialCommunityIcons name="pricetag-outline" size={16} color={theme.textSecondary} />
+              <MaterialCommunityIcons name="tag-outline" size={16} color={theme.textSecondary} />
               <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>Τμήμα: {booking.departmentId}</ThemedText>
             </View>
             <View style={styles.summaryRow}>
