@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
-import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { apiRequest, getApiUrl, queryClient } from "@/lib/query-client";
 
 interface User {
   id: string;
@@ -79,6 +79,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.setItem(AUTH_TOKEN_KEY, data.token);
     setToken(data.token);
     setUser(data.user);
+    
+    // Clear all cached queries so they refetch with new auth token
+    queryClient.clear();
   }
 
   async function register(email: string, password: string, ugrId: string) {
@@ -88,6 +91,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.setItem(AUTH_TOKEN_KEY, data.token);
     setToken(data.token);
     setUser(data.user);
+    
+    // Clear all cached queries so they refetch with new auth token
+    queryClient.clear();
   }
 
   async function logout() {
@@ -106,6 +112,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
     setToken(null);
     setUser(null);
+    
+    // Clear all cached queries when logging out
+    queryClient.clear();
   }
 
   async function setBiometricEnabled(enabled: boolean) {
