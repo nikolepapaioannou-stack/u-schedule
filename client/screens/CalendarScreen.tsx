@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { StyleSheet, View, FlatList, RefreshControl, Pressable, Alert } from "react-native";
+import { StyleSheet, View, FlatList, RefreshControl, Pressable, Alert, Modal, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -55,6 +55,8 @@ export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [closeReason, setCloseReason] = useState("");
 
   const fetchCalendarData = useCallback(async () => {
     try {
@@ -113,31 +115,25 @@ export default function CalendarScreen() {
       Alert.alert("Επιλογή", "Επιλέξτε πρώτα μια ημερομηνία από το ημερολόγιο");
       return;
     }
+    setCloseReason("");
+    setShowCloseModal(true);
+  };
 
-    Alert.prompt(
-      "Κλείσιμο Ημερομηνίας",
-      `Λόγος κλεισίματος για ${new Date(selectedDate).toLocaleDateString("el-GR")}:`,
-      [
-        { text: "Ακύρωση", style: "cancel" },
-        {
-          text: "Κλείσιμο",
-          onPress: async (reason?: string) => {
-            try {
-              await authFetch("/api/closed-dates", {
-                method: "POST",
-                body: JSON.stringify({ date: selectedDate, reason }),
-              });
-              fetchCalendarData();
-              setSelectedDate(null);
-              Alert.alert("Επιτυχία", "Η ημερομηνία έκλεισε");
-            } catch (err: any) {
-              Alert.alert("Σφάλμα", err.message || "Αποτυχία κλεισίματος");
-            }
-          },
-        },
-      ],
-      "plain-text"
-    );
+  const handleConfirmCloseDate = async () => {
+    if (!selectedDate) return;
+    try {
+      await authFetch("/api/closed-dates", {
+        method: "POST",
+        body: JSON.stringify({ date: selectedDate, reason: closeReason }),
+      });
+      fetchCalendarData();
+      setSelectedDate(null);
+      setShowCloseModal(false);
+      setCloseReason("");
+      Alert.alert("Επιτυχία", "Η ημερομηνία έκλεισε");
+    } catch (err: any) {
+      Alert.alert("Σφάλμα", err.message || "Αποτυχία κλεισίματος");
+    }
   };
 
   const handleRemoveClosedDate = (closedDate: ClosedDate) => {
@@ -255,7 +251,7 @@ export default function CalendarScreen() {
                     styles.dayCell,
                     isSelected && { backgroundColor: theme.primary + "20" },
                     isToday && { borderWidth: 2, borderColor: theme.primary },
-                    isClosed && { backgroundColor: theme.error + "20" },
+                    isClosed && { backgroundColor: theme.error },
                   ]}
                   onPress={() => setSelectedDate(dateStr)}
                 >
@@ -263,7 +259,7 @@ export default function CalendarScreen() {
                     type="body"
                     style={[
                       { textAlign: "center" },
-                      isClosed && { color: theme.error, textDecorationLine: "line-through" },
+                      isClosed && { color: "#FFFFFF", fontWeight: "600" },
                     ]}
                   >
                     {day}
@@ -320,6 +316,52 @@ export default function CalendarScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <Modal
+        visible={showCloseModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCloseModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.backgroundSecondary }]}>
+            <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>
+              Κλείσιμο Ημερομηνίας
+            </ThemedText>
+            <ThemedText type="body" style={{ marginBottom: Spacing.md, color: theme.textSecondary }}>
+              {selectedDate ? new Date(selectedDate).toLocaleDateString("el-GR") : ""}
+            </ThemedText>
+            <TextInput
+              style={[
+                styles.reasonInput,
+                { 
+                  backgroundColor: theme.backgroundDefault,
+                  color: theme.text,
+                  borderColor: theme.border,
+                },
+              ]}
+              placeholder="Λόγος κλεισίματος (προαιρετικό)"
+              placeholderTextColor={theme.textSecondary}
+              value={closeReason}
+              onChangeText={setCloseReason}
+              multiline
+            />
+            <View style={styles.modalButtons}>
+              <Pressable
+                style={[styles.modalButton, { backgroundColor: theme.backgroundSecondary }]}
+                onPress={() => setShowCloseModal(false)}
+              >
+                <ThemedText type="body">Ακύρωση</ThemedText>
+              </Pressable>
+              <Pressable
+                style={[styles.modalButton, { backgroundColor: theme.error }]}
+                onPress={handleConfirmCloseDate}
+              >
+                <ThemedText type="body" style={{ color: "#FFFFFF" }}>Κλείσιμο</ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <FlatList
         data={[]}
         keyExtractor={() => "calendar"}
@@ -513,5 +555,36 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: Spacing.xs,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.xl,
+  },
+  modalContent: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.xl,
+  },
+  reasonInput: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.md,
+    minHeight: 80,
+    textAlignVertical: "top",
+    marginBottom: Spacing.lg,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: Spacing.md,
+  },
+  modalButton: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.sm,
   },
 });

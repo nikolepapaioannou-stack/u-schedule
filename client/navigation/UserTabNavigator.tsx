@@ -7,12 +7,14 @@ import { AppIcon } from "@/components/AppIcon";
 
 import SearchScreen from "@/screens/SearchScreen";
 import MyBookingsScreen from "@/screens/MyBookingsScreen";
+import UserExamCalendarScreen from "@/screens/UserExamCalendarScreen";
 import NotificationsScreen from "@/screens/NotificationsScreen";
 import ProfileScreen from "@/screens/ProfileScreen";
 
 export type UserTabParamList = {
   Search: undefined;
   MyBookings: undefined;
+  ExamCalendar: undefined;
   Notifications: undefined;
   Profile: undefined;
 };
@@ -63,6 +65,16 @@ export default function UserTabNavigator() {
         component={MyBookingsScreen}
         options={{
           title: "Κρατήσεις",
+          tabBarIcon: ({ color, size }) => (
+            <AppIcon name="file-document-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="ExamCalendar"
+        component={UserExamCalendarScreen}
+        options={{
+          title: "Ημερολόγιο",
           tabBarIcon: ({ color, size }) => (
             <AppIcon name="calendar-outline" size={size} color={color} />
           ),

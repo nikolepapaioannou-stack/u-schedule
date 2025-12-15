@@ -647,6 +647,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true });
   });
 
+  app.get("/api/approved-bookings", async (req, res) => {
+    const userId = await requireAuth(req, res);
+    if (!userId) return;
+    
+    const allBookings = await storage.getBookings();
+    const approvedBookings = allBookings
+      .filter(b => b.status === "approved")
+      .map(b => ({
+        id: b.id,
+        bookingDate: b.bookingDate,
+        departmentId: b.departmentId,
+        examStartHour: b.examStartHour,
+        candidateCount: b.candidateCount,
+        preferredShift: b.preferredShift,
+      }));
+    res.json(approvedBookings);
+  });
+
   app.post("/api/slots/search", async (req, res) => {
     const userId = await requireAuth(req, res);
     if (!userId) return;
