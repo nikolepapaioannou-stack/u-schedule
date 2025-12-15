@@ -203,6 +203,12 @@ export function useAuthenticatedFetch() {
           throw new Error("Η συνεδρία έληξε - παρακαλώ συνδεθείτε ξανά");
         }
         
+        // Handle 403 - permission denied (don't logout, just show error)
+        if (response.status === 403) {
+          const error = await response.json().catch(() => ({ error: "Δεν έχετε δικαιώματα για αυτή την ενέργεια" }));
+          throw new Error(error.error || "Δεν έχετε δικαιώματα για αυτή την ενέργεια");
+        }
+        
         if (!response.ok) {
           const error = await response.json().catch(() => ({ error: "Σφάλμα δικτύου" }));
           throw new Error(error.error || "Σφάλμα αιτήματος");

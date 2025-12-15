@@ -427,7 +427,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Only superadmin can create admin or superadmin users
       const admin = await storage.getUser(adminId);
-      if ((role === 'admin' || role === 'superadmin') && admin?.role !== 'superadmin') {
+      const isSuperAdmin = admin?.role === 'superadmin' || (admin?.isAdmin && !admin?.role);
+      if ((role === 'admin' || role === 'superadmin') && !isSuperAdmin) {
         return res.status(403).json({ error: "Μόνο ο κεντρικός διαχειριστής μπορεί να δημιουργήσει λογαριασμούς διαχειριστών" });
       }
       
@@ -467,7 +468,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put("/api/admin/users/:id/role", async (req, res) => {
-    const adminId = await requireSuperAdmin(req, res);
+    const adminId = await requireAdmin(req, res);
     if (!adminId) return;
     
     try {
@@ -489,6 +490,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Ο χρήστης δεν βρέθηκε" });
       }
       
+      const admin = await storage.getUser(adminId);
+      // Check for superadmin: either explicit role OR legacy isAdmin with no role
+      const isSuperAdmin = admin?.role === 'superadmin' || (admin?.isAdmin && !admin?.role);
+      const targetIsPrivileged = user.role === 'admin' || user.role === 'superadmin' || user.isAdmin;
+      
+      // Only superadmin can modify admin/superadmin users
+      if (targetIsPrivileged && !isSuperAdmin) {
+        return res.status(403).json({ error: "Μόνο ο κεντρικός διαχειριστής μπορεί να τροποποιήσει διαχειριστές" });
+      }
+      
+      // Only superadmin can promote to admin or superadmin
+      if ((role === 'admin' || role === 'superadmin') && !isSuperAdmin) {
+        return res.status(403).json({ error: "Μόνο ο κεντρικός διαχειριστής μπορεί να αναβαθμίσει χρήστες σε διαχειριστές" });
+      }
+      
       const updated = await storage.updateUserRole(id, role);
       res.json({
         id: updated.id,
@@ -504,7 +520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.delete("/api/admin/users/:id", async (req, res) => {
-    const adminId = await requireSuperAdmin(req, res);
+    const adminId = await requireAdmin(req, res);
     if (!adminId) return;
     
     try {
@@ -518,6 +534,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(id);
       if (!user) {
         return res.status(404).json({ error: "Ο χρήστης δεν βρέθηκε" });
+      }
+      
+      // Only superadmin can delete admin/superadmin users
+      const admin = await storage.getUser(adminId);
+      // Check for superadmin: either explicit role OR legacy isAdmin with no role
+      const isSuperAdmin = admin?.role === 'superadmin' || (admin?.isAdmin && !admin?.role);
+      const targetIsPrivileged = user.role === 'admin' || user.role === 'superadmin' || user.isAdmin;
+      
+      if (targetIsPrivileged && !isSuperAdmin) {
+        return res.status(403).json({ error: "Μόνο ο κεντρικός διαχειριστής μπορεί να διαγράψει διαχειριστές" });
       }
       
       await storage.deleteUser(id);
