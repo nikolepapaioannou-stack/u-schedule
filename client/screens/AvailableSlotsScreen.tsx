@@ -37,6 +37,12 @@ interface Slot {
   hourlySlots: HourlySlot[];
 }
 
+interface UnavailableDate {
+  date: string;
+  reason: string;
+  type: 'closed' | 'full';
+}
+
 const PRIORITY_CONFIG = {
   1: { label: "Ιδανική Επιλογή", color: "success", badge: "Καλύτερη Επιλογή" },
   2: { label: "Εναλλακτική Βάρδια", color: "primary", badge: "Πλήρες Τμήμα" },
@@ -60,12 +66,14 @@ export default function AvailableSlotsScreen() {
   const { departmentId, candidateCount, courseEndDate, preferredShift } = route.params;
 
   const [slots, setSlots] = useState<Slot[]>([]);
+  const [unavailableDates, setUnavailableDates] = useState<UnavailableDate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isBooking, setIsBooking] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [expandedSlot, setExpandedSlot] = useState<string | null>(null);
   const [selectedHour, setSelectedHour] = useState<{ slotKey: string; hour: number } | null>(null);
+  const [showUnavailable, setShowUnavailable] = useState(false);
 
   useEffect(() => {
     fetchSlots();
@@ -78,6 +86,7 @@ export default function AvailableSlotsScreen() {
         body: JSON.stringify({ departmentId, candidateCount, courseEndDate, preferredShift }),
       });
       setSlots(result.slots);
+      setUnavailableDates(result.unavailableDates || []);
       setError("");
     } catch (err: any) {
       setError(err.message || "Σφάλμα φόρτωσης");
@@ -308,17 +317,81 @@ export default function AvailableSlotsScreen() {
           slots.length === 0 && styles.emptyListContent,
         ]}
         ListHeaderComponent={
-          <Card elevation={1} style={styles.summaryCard}>
-            <ThemedText type="h4">Αναζήτηση για:</ThemedText>
-            <View style={styles.summaryRow}>
-              <ThemedText type="body" style={{ color: theme.textSecondary }}>Τμήμα:</ThemedText>
-              <ThemedText type="body">{departmentId}</ThemedText>
-            </View>
-            <View style={styles.summaryRow}>
-              <ThemedText type="body" style={{ color: theme.textSecondary }}>Υποψήφιοι:</ThemedText>
-              <ThemedText type="body">{candidateCount}</ThemedText>
-            </View>
-          </Card>
+          <>
+            <Card elevation={1} style={styles.summaryCard}>
+              <ThemedText type="h4">Αναζήτηση για:</ThemedText>
+              <View style={styles.summaryRow}>
+                <ThemedText type="body" style={{ color: theme.textSecondary }}>Τμήμα:</ThemedText>
+                <ThemedText type="body">{departmentId}</ThemedText>
+              </View>
+              <View style={styles.summaryRow}>
+                <ThemedText type="body" style={{ color: theme.textSecondary }}>Υποψήφιοι:</ThemedText>
+                <ThemedText type="body">{candidateCount}</ThemedText>
+              </View>
+            </Card>
+            
+            {unavailableDates.length > 0 ? (
+              <Card elevation={1} style={styles.unavailableCard}>
+                <Pressable 
+                  style={styles.unavailableHeader} 
+                  onPress={() => setShowUnavailable(!showUnavailable)}
+                >
+                  <View style={styles.unavailableHeaderLeft}>
+                    <MaterialCommunityIcons 
+                      name="calendar-remove" 
+                      size={20} 
+                      color={theme.error} 
+                    />
+                    <ThemedText type="body" style={{ marginLeft: Spacing.sm, fontWeight: "600" }}>
+                      Μη διαθέσιμες ημερομηνίες ({unavailableDates.length})
+                    </ThemedText>
+                  </View>
+                  <MaterialCommunityIcons 
+                    name={showUnavailable ? "chevron-up" : "chevron-down"} 
+                    size={24} 
+                    color={theme.textSecondary} 
+                  />
+                </Pressable>
+                
+                {showUnavailable ? (
+                  <View style={styles.unavailableList}>
+                    {unavailableDates.map((item) => (
+                      <View 
+                        key={item.date} 
+                        style={[
+                          styles.unavailableItem, 
+                          { 
+                            backgroundColor: item.type === 'closed' 
+                              ? theme.error + "10" 
+                              : theme.warning + "10",
+                            borderLeftColor: item.type === 'closed' 
+                              ? theme.error 
+                              : theme.warning,
+                          }
+                        ]}
+                      >
+                        <View style={styles.unavailableItemContent}>
+                          <MaterialCommunityIcons 
+                            name={item.type === 'closed' ? "cancel" : "account-group"} 
+                            size={16} 
+                            color={item.type === 'closed' ? theme.error : theme.warning} 
+                          />
+                          <View style={{ marginLeft: Spacing.sm, flex: 1 }}>
+                            <ThemedText type="body" style={{ fontWeight: "500" }}>
+                              {formatDate(item.date)}
+                            </ThemedText>
+                            <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                              {item.reason}
+                            </ThemedText>
+                          </View>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+              </Card>
+            ) : null}
+          </>
         }
         ListEmptyComponent={renderEmptyState}
         refreshControl={
@@ -438,5 +511,30 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     justifyContent: "center",
     alignItems: "center",
+  },
+  unavailableCard: {
+    marginBottom: Spacing.lg,
+  },
+  unavailableHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  unavailableHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  unavailableList: {
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
+  },
+  unavailableItem: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderLeftWidth: 3,
+  },
+  unavailableItemContent: {
+    flexDirection: "row",
+    alignItems: "flex-start",
   },
 });

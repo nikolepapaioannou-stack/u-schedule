@@ -737,7 +737,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const closedDatesData = await storage.getClosedDates();
       const closedDatesSet = new Set(closedDatesData.map(cd => cd.date));
+      const closedDatesMap = new Map(closedDatesData.map(cd => [cd.date, cd.reason]));
       const settings = await storage.getSettings();
+      const allShifts = await storage.getShifts();
       
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -749,9 +751,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const slots = await getAvailableSlots(minDate, minDate, candidateCount, preferredShift);
       
+      // Collect unavailable dates (closed and fully booked) for display
+      const unavailableDates: Array<{ date: string; reason: string; type: 'closed' | 'full' }> = [];
+      
+      // Iterate through dates from minDate to 2 months ahead
+      const current = new Date(minDate);
+      const end = new Date(minDate);
+      end.setMonth(end.getMonth() + 2);
+      
+      while (current <= end) {
+        const dateStr = current.toISOString().split("T")[0];
+        
+        if (!isWeekend(current)) {
+          // Check if date is admin-closed
+          if (closedDatesSet.has(dateStr)) {
+            const reason = closedDatesMap.get(dateStr);
+            unavailableDates.push({
+              date: dateStr,
+              reason: reason || "Μη διαθέσιμη ημερομηνία",
+              type: 'closed',
+            });
+          } else {
+            // Check if date is fully booked (no capacity in any shift)
+            let hasCapacity = false;
+            for (const shift of allShifts) {
+              const existingBookings = await storage.getBookingsByDateAndShift(dateStr, shift.id);
+              const bookedCandidates = existingBookings.reduce((sum, b) => sum + b.candidateCount, 0);
+              if (bookedCandidates < shift.maxCandidates) {
+                hasCapacity = true;
+                break;
+              }
+            }
+            
+            if (!hasCapacity && allShifts.length > 0) {
+              unavailableDates.push({
+                date: dateStr,
+                reason: "Πλήρως καλυμμένη ημερομηνία",
+                type: 'full',
+              });
+            }
+          }
+        }
+        
+        current.setDate(current.getDate() + 1);
+      }
+      
       res.json({
         minDate: minDate.toISOString().split("T")[0],
         slots,
+        unavailableDates,
       });
     } catch (error) {
       console.error("Search slots error:", error);
