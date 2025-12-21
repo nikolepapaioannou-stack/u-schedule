@@ -21,6 +21,17 @@ function getGreekDateString(dateStr: string): string {
   });
 }
 
+function formatDateDDMMYYYY(dateStr: string): string {
+  const date = new Date(dateStr);
+  return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+}
+
+function getDeadlineDate(examDateStr: string): string {
+  const examDate = new Date(examDateStr);
+  const deadline = addDays(examDate, -1);
+  return formatDateDDMMYYYY(deadline.toISOString().split('T')[0]);
+}
+
 async function sendDailyAdminReminder() {
   console.log('[Scheduler] Running daily admin reminder job...');
   
@@ -44,8 +55,8 @@ async function sendDailyAdminReminder() {
     await storage.createNotification({
       userId: admin.id,
       type: 'admin_reminder',
-      title: 'Υπενθύμιση Εξωτερικών Ενεργειών',
-      message: `Υπάρχουν ${bookings.length} εξετάσεις προγραμματισμένες για ${getGreekDateString(targetDateStr)} που απαιτούν εξωτερική ενέργεια. Τμήματα: ${departmentList}. Παρακαλώ ελέγξτε αν έχουν ολοκληρωθεί οι απαιτούμενες ενέργειες.`,
+      title: 'Υπενθύμιση ανάρτησης Voucher',
+      message: `Υπάρχουν ${bookings.length} εξετάσεις προγραμματισμένες για ${getGreekDateString(targetDateStr)} που απαιτούν ανάρτηση κωδικών επιταγής. Τμήματα: ${departmentList}. Παρακαλώ ελέγξτε αν έχουν αναρτηθεί οι κωδικοί.`,
       bookingId: bookings[0]?.id,
     });
     console.log(`[Scheduler] Sent reminder to admin ${admin.email}`);
@@ -54,11 +65,12 @@ async function sendDailyAdminReminder() {
   for (const booking of bookings) {
     const user = await storage.getUser(booking.userId);
     if (user) {
+      const deadlineDate = getDeadlineDate(targetDateStr);
       await storage.createNotification({
         userId: user.id,
         type: 'action_reminder',
-        title: 'Υπενθύμιση Εξωτερικής Ενέργειας',
-        message: `Η εξέταση για το τμήμα ${booking.departmentId} είναι προγραμματισμένη για ${getGreekDateString(targetDateStr)}. Παρακαλώ βεβαιωθείτε ότι έχετε ολοκληρώσει την απαιτούμενη εξωτερική ενέργεια. Προθεσμία: 1 ημέρα πριν την εξέταση στις 12:00.`,
+        title: 'Υπενθύμιση ανάρτησης Voucher',
+        message: `Η εξέταση για το τμήμα ${booking.departmentId} είναι προγραμματισμένη για ${getGreekDateString(targetDateStr)}. Παρακαλώ βεβαιωθείτε ότι έχετε αναρτήσει τους κωδικούς επιταγής πιστοποίησης μέχρι και ${deadlineDate} στις 12:00μ.μ.`,
         bookingId: booking.id,
       });
     }
@@ -102,12 +114,13 @@ async function checkDeadlines() {
     await storage.cancelBookingDueToDeadline(booking.id);
     
     const user = await storage.getUser(booking.userId);
+    const examDateFormatted = formatDateDDMMYYYY(tomorrowStr);
     if (user) {
       await storage.createNotification({
         userId: user.id,
         type: 'booking_cancelled',
         title: 'Ακύρωση Εξέτασης',
-        message: `Η εξέταση για το τμήμα ${booking.departmentId} προγραμματισμένη για ${getGreekDateString(tomorrowStr)} ακυρώθηκε λόγω μη ολοκλήρωσης της απαιτούμενης εξωτερικής ενέργειας μέχρι την προθεσμία (12:00 μια ημέρα πριν).`,
+        message: `Η εξέταση για το τμήμα ${booking.departmentId} (${examDateFormatted}) ακυρώθηκε λόγω μη ανάρτησης των κωδικών επιταγής πιστοποίησης μέχρι την προθεσμία (12:00μ.μ. μια ημέρα πριν).`,
         bookingId: booking.id,
       });
     }
@@ -117,7 +130,7 @@ async function checkDeadlines() {
         userId: admin.id,
         type: 'booking_auto_cancelled',
         title: 'Αυτόματη Ακύρωση Εξέτασης',
-        message: `Η εξέταση του τμήματος ${booking.departmentId} (${getGreekDateString(tomorrowStr)}) ακυρώθηκε αυτόματα λόγω μη επιβεβαιωμένης εξωτερικής ενέργειας.`,
+        message: `Η εξέταση του τμήματος ${booking.departmentId} (${examDateFormatted}) ακυρώθηκε αυτόματα λόγω μη ανάρτησης των κωδικών επιταγής πιστοποίησης.`,
         bookingId: booking.id,
       });
     }

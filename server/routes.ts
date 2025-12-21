@@ -1937,14 +1937,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.markExternalActionUserCompleted(id);
       
+      // Format date as DD/MM/YYYY
+      const examDate = new Date(booking.bookingDate);
+      const formattedDate = `${String(examDate.getDate()).padStart(2, '0')}/${String(examDate.getMonth() + 1).padStart(2, '0')}/${examDate.getFullYear()}`;
+      
       // Notify admins
       const admins = await storage.getAdminUsers();
       for (const admin of admins) {
         await storage.createNotification({
           userId: admin.id,
           type: 'action_user_completed',
-          title: 'Εξωτερική Ενέργεια Προς Επαλήθευση',
-          message: `Ο χρήστης σημείωσε ότι ολοκλήρωσε την εξωτερική ενέργεια για το τμήμα ${booking.departmentId} (${booking.bookingDate}). Παρακαλώ επιβεβαιώστε.`,
+          title: 'Ανάρτηση Voucher Προς Επαλήθευση',
+          message: `Ο χρήστης δήλωσε ότι ανάρτησε τους κωδικούς επιταγής για το τμήμα ${booking.departmentId} (${formattedDate}). Παρακαλώ επιβεβαιώστε.`,
           bookingId: id,
         });
       }
@@ -1979,12 +1983,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.verifyExternalAction(id);
       
+      // Format date as DD/MM/YYYY
+      const examDate = new Date(booking.bookingDate);
+      const formattedDate = `${String(examDate.getDate()).padStart(2, '0')}/${String(examDate.getMonth() + 1).padStart(2, '0')}/${examDate.getFullYear()}`;
+      
       // Notify user
       await storage.createNotification({
         userId: booking.userId,
         type: 'action_verified',
-        title: 'Επιβεβαίωση Εξωτερικής Ενέργειας',
-        message: `Η εξωτερική ενέργεια για το τμήμα ${booking.departmentId} (${booking.bookingDate}) επιβεβαιώθηκε επιτυχώς. Η εξέταση θα διεξαχθεί κανονικά.`,
+        title: 'Επιβεβαίωση ανάρτησης Voucher',
+        message: `Η ανάρτηση των κωδικών επιταγής για το τμήμα ${booking.departmentId} (${formattedDate}) επιβεβαιώθηκε επιτυχώς. Η εξέταση θα διεξαχθεί κανονικά.`,
         bookingId: id,
       });
       
@@ -2019,12 +2027,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.rejectExternalAction(id);
       
+      // Format date as DD/MM/YYYY
+      const examDate = new Date(booking.bookingDate);
+      const formattedDate = `${String(examDate.getDate()).padStart(2, '0')}/${String(examDate.getMonth() + 1).padStart(2, '0')}/${examDate.getFullYear()}`;
+      
       // Notify user
       await storage.createNotification({
         userId: booking.userId,
         type: 'action_rejected',
-        title: 'Απόρριψη Εξωτερικής Ενέργειας',
-        message: `Η εξωτερική ενέργεια για το τμήμα ${booking.departmentId} (${booking.bookingDate}) απορρίφθηκε. ${reason ? `Λόγος: ${reason}` : 'Παρακαλώ επαναλάβετε την ενέργεια.'}`,
+        title: 'Απόρριψη ανάρτησης Voucher',
+        message: `Η ανάρτηση κωδικών επιταγής για το τμήμα ${booking.departmentId} (${formattedDate}) απορρίφθηκε. ${reason ? `Λόγος: ${reason}` : 'Παρακαλώ αναρτήστε ξανά τους κωδικούς.'}`,
         bookingId: id,
       });
       
@@ -2058,12 +2070,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.verifyExternalAction(id);
       
+      // Format date as DD/MM/YYYY
+      const examDate = new Date(booking.bookingDate);
+      const formattedDate = `${String(examDate.getDate()).padStart(2, '0')}/${String(examDate.getMonth() + 1).padStart(2, '0')}/${examDate.getFullYear()}`;
+      
       // Notify user
       await storage.createNotification({
         userId: booking.userId,
         type: 'action_verified',
-        title: 'Ολοκλήρωση Εξωτερικής Ενέργειας',
-        message: `Η εξωτερική ενέργεια για το τμήμα ${booking.departmentId} (${booking.bookingDate}) ολοκληρώθηκε από τον διαχειριστή. Η εξέταση θα διεξαχθεί κανονικά.`,
+        title: 'Ολοκλήρωση ανάρτησης Voucher',
+        message: `Η ανάρτηση των κωδικών επιταγής για το τμήμα ${booking.departmentId} (${formattedDate}) ολοκληρώθηκε. Η εξέταση θα διεξαχθεί κανονικά.`,
         bookingId: id,
       });
       
