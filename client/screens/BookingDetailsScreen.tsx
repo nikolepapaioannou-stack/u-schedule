@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, ActivityIndicator } from "react-native";
+import { StyleSheet, View, ActivityIndicator, Pressable, Platform, Text, Alert } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRoute, RouteProp } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -12,6 +13,42 @@ import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollV
 import { useTheme } from "@/hooks/useTheme";
 import { useAuthenticatedFetch } from "@/lib/auth";
 import { Spacing, BorderRadius } from "@/constants/theme";
+
+const VOUCHER_STATUS_CONFIG = {
+  pending: { label: "Εκκρεμεί", color: "warning", icon: "clock-outline" },
+  user_completed: { label: "Σε Αναμονή Επιβεβαίωσης", color: "info", icon: "send" },
+  verified: { label: "Επαληθευμένο", color: "success", icon: "check-circle" },
+  rejected: { label: "Απορρίφθηκε - Επαναλάβετε", color: "error", icon: "alert-circle" },
+} as const;
+
+function crossPlatformConfirm(
+  title: string,
+  message: string,
+  onConfirm: () => void,
+  confirmText: string = "OK"
+) {
+  if (Platform.OS === "web") {
+    if (window.confirm(`${title}\n\n${message}`)) {
+      onConfirm();
+    }
+  } else {
+    Alert.alert(title, message, [
+      { text: "Ακύρωση", style: "cancel" },
+      { text: confirmText, onPress: onConfirm },
+    ]);
+  }
+}
+
+function formatDateDDMMYYYY(dateStr: string): string {
+  const date = new Date(dateStr);
+  return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
+}
+
+function getDeadlineDate(examDateStr: string): string {
+  const examDate = new Date(examDateStr);
+  examDate.setDate(examDate.getDate() - 1);
+  return formatDateDDMMYYYY(examDate.toISOString().split("T")[0]);
+}
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type RoutePropType = RouteProp<RootStackParamList, "BookingDetails">;
@@ -36,11 +73,33 @@ export default function BookingDetailsScreen() {
   const insets = useSafeAreaInsets();
   const route = useRoute<RoutePropType>();
   const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
 
   const { bookingId } = route.params;
 
   const [booking, setBooking] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const completeVoucherMutation = useMutation({
+    mutationFn: () =>
+      authFetch(`/api/bookings/${bookingId}/external-action/complete`, {
+        method: "POST",
+      }),
+    onSuccess: (updatedBooking) => {
+      setBooking((prev: any) => ({ ...prev, externalActionStatus: "user_completed" }));
+      queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-actions/pending"] });
+    },
+  });
+
+  const handleCompleteVoucher = () => {
+    crossPlatformConfirm(
+      "Δήλωση Ανάρτησης Voucher",
+      "Επιβεβαιώνετε ότι έχετε αναρτήσει τους κωδικούς επιταγής πιστοποίησης; Η δήλωση θα αποσταλεί για επαλήθευση από τον διαχειριστή.",
+      () => completeVoucherMutation.mutate(),
+      "Επιβεβαίωση"
+    );
+  };
 
   useEffect(() => {
     fetchBooking();
@@ -107,7 +166,7 @@ export default function BookingDetailsScreen() {
 
           <View style={styles.detailRow}>
             <View style={styles.detailLabel}>
-              <MaterialCommunityIcons name="pricetag-outline" size={18} color={theme.textSecondary} />
+              <MaterialCommunityIcons name="tag-outline" size={18} color={theme.textSecondary} />
               <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}>
                 Κωδικός Τμήματος
               </ThemedText>
@@ -164,7 +223,7 @@ export default function BookingDetailsScreen() {
           {booking.confirmationNumber ? (
             <View style={styles.detailRow}>
               <View style={styles.detailLabel}>
-                <MaterialCommunityIcons name="document-text-outline" size={18} color={theme.textSecondary} />
+                <MaterialCommunityIcons name="file-document-outline" size={18} color={theme.textSecondary} />
                 <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}>
                   Αριθμός Επιβεβαίωσης
                 </ThemedText>
@@ -173,6 +232,73 @@ export default function BookingDetailsScreen() {
             </View>
           ) : null}
         </Card>
+
+        {booking.status === "approved" ? (
+          <Card elevation={1} style={styles.voucherCard}>
+            <View style={styles.voucherHeader}>
+              <MaterialCommunityIcons name="ticket-confirmation-outline" size={24} color={theme.primary} />
+              <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>Ανάρτηση Voucher</ThemedText>
+            </View>
+            
+            {(() => {
+              const voucherStatus = booking.externalActionStatus || "pending";
+              const voucherConfig = VOUCHER_STATUS_CONFIG[voucherStatus as keyof typeof VOUCHER_STATUS_CONFIG] || VOUCHER_STATUS_CONFIG.pending;
+              const voucherColor = theme[voucherConfig.color as keyof typeof theme] as string || theme.warning;
+              const deadlineDate = getDeadlineDate(booking.bookingDate);
+              const canComplete = voucherStatus === "pending" || voucherStatus === "rejected";
+              
+              return (
+                <>
+                  <View style={[styles.voucherStatusBadge, { backgroundColor: voucherColor + "20" }]}>
+                    <MaterialCommunityIcons name={voucherConfig.icon as any} size={18} color={voucherColor} />
+                    <Text style={[styles.voucherStatusText, { color: voucherColor }]}>
+                      {voucherConfig.label}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.voucherDeadline}>
+                    <MaterialCommunityIcons name="calendar-clock" size={16} color={theme.textSecondary} />
+                    <ThemedText type="small" style={{ marginLeft: Spacing.xs, color: theme.textSecondary }}>
+                      Προθεσμία: {deadlineDate} στις 12:00μ.μ.
+                    </ThemedText>
+                  </View>
+                  
+                  {canComplete ? (
+                    <Pressable
+                      style={[
+                        styles.voucherButton,
+                        { backgroundColor: theme.primary, opacity: completeVoucherMutation.isPending ? 0.6 : 1 },
+                      ]}
+                      onPress={handleCompleteVoucher}
+                      disabled={completeVoucherMutation.isPending}
+                    >
+                      {completeVoucherMutation.isPending ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <>
+                          <MaterialCommunityIcons name="check" size={18} color="#fff" />
+                          <Text style={styles.voucherButtonText}>Δήλωσα Ανάρτηση Voucher</Text>
+                        </>
+                      )}
+                    </Pressable>
+                  ) : null}
+                  
+                  {voucherStatus === "verified" ? (
+                    <ThemedText type="small" style={{ color: theme.success, textAlign: "center" }}>
+                      Η ανάρτηση έχει επιβεβαιωθεί. Η εξέταση θα διεξαχθεί κανονικά.
+                    </ThemedText>
+                  ) : null}
+                  
+                  {voucherStatus === "user_completed" ? (
+                    <ThemedText type="small" style={{ color: theme.info, textAlign: "center" }}>
+                      Η δήλωσή σας αναμένει επιβεβαίωση από τον διαχειριστή.
+                    </ThemedText>
+                  ) : null}
+                </>
+              );
+            })()}
+          </Card>
+        ) : null}
 
         {booking.notes ? (
           <Card elevation={1} style={styles.notesCard}>
@@ -184,7 +310,7 @@ export default function BookingDetailsScreen() {
         ) : null}
 
         {booking.adminNotes ? (
-          <Card elevation={1} style={[styles.notesCard, { borderLeftColor: statusColor, borderLeftWidth: 4 }]}>
+          <Card elevation={1} style={StyleSheet.flatten([styles.notesCard, { borderLeftColor: statusColor, borderLeftWidth: 4 }])}>
             <ThemedText type="h4">Σημειώσεις Διαχειριστή</ThemedText>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               {booking.adminNotes}
@@ -249,5 +375,43 @@ const styles = StyleSheet.create({
   timestampRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+  },
+  voucherCard: {
+    gap: Spacing.md,
+  },
+  voucherHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  voucherStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    alignSelf: "flex-start",
+  },
+  voucherStatusText: {
+    marginLeft: Spacing.sm,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  voucherDeadline: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  voucherButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.sm,
+  },
+  voucherButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 16,
   },
 });
