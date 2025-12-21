@@ -47,6 +47,20 @@ Key tables in `shared/schema.ts`:
 4. User confirms booking before timer expires
 5. Admin reviews and approves/rejects pending bookings
 
+### External Action Tracking
+The system tracks external actions required for approved bookings (e.g., venue arrangements, proctor assignments):
+- **4-day advance warning**: Automated reminder 4 days before exam
+- **User completion**: Users mark external action as complete
+- **Admin verification**: Admins verify or reject user-marked completions
+- **Auto-cancellation**: Bookings are automatically cancelled at 12:00 PM (Europe/Athens) one day before exam if external action is not verified
+
+**Scheduler** (`server/scheduler.ts`):
+- Daily reminder job at 08:00 Europe/Athens
+- Deadline enforcement job at 12:00 Europe/Athens
+- Uses `node-cron` for scheduling
+
+**Status flow**: `pending` → `user_completed` → `verified` (or `rejected` → `pending`)
+
 ### Shared Code
 The `shared/` directory contains Drizzle schema definitions and Zod validation schemas, used by both frontend and backend for type safety and validation.
 

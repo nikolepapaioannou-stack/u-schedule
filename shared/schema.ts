@@ -78,6 +78,9 @@ export const proctorHourlyCapacities = pgTable("proctor_hourly_capacities", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const externalActionStatuses = ["pending", "user_completed", "verified", "rejected"] as const;
+export type ExternalActionStatus = typeof externalActionStatuses[number];
+
 export const bookings = pgTable("bookings", {
   id: varchar("id")
     .primaryKey()
@@ -100,6 +103,13 @@ export const bookings = pgTable("bookings", {
   capacityOverrideBy: varchar("capacity_override_by").references(() => users.id),
   capacityOverrideAt: timestamp("capacity_override_at"),
   capacityOverrideDetails: text("capacity_override_details"),
+  // External action tracking fields
+  externalActionStatus: text("external_action_status").default("pending"),
+  externalActionCompletedAt: timestamp("external_action_completed_at"),
+  externalActionVerifiedAt: timestamp("external_action_verified_at"),
+  externalActionWarningSentAt: timestamp("external_action_warning_sent_at"),
+  externalActionDeadlineWarningSentAt: timestamp("external_action_deadline_warning_sent_at"),
+  externalActionCancelledAt: timestamp("external_action_cancelled_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

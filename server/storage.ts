@@ -491,6 +491,145 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
+  // External action tracking methods
+  async getApprovedBookingsByDate(date: string): Promise<Booking[]> {
+    return db.select().from(bookings).where(
+      and(
+        eq(bookings.bookingDate, date),
+        eq(bookings.status, "approved")
+      )
+    );
+  }
+
+  async getBookingsNeedingWarning(targetDate: string): Promise<Booking[]> {
+    return db.select().from(bookings).where(
+      and(
+        eq(bookings.bookingDate, targetDate),
+        eq(bookings.status, "approved"),
+        isNull(bookings.externalActionWarningSentAt),
+        or(
+          eq(bookings.externalActionStatus, "pending"),
+          isNull(bookings.externalActionStatus)
+        )
+      )
+    );
+  }
+
+  async getBookingsNeedingDeadlineCheck(targetDate: string): Promise<Booking[]> {
+    return db.select().from(bookings).where(
+      and(
+        eq(bookings.bookingDate, targetDate),
+        eq(bookings.status, "approved"),
+        or(
+          eq(bookings.externalActionStatus, "pending"),
+          eq(bookings.externalActionStatus, "user_completed"),
+          isNull(bookings.externalActionStatus)
+        ),
+        not(eq(bookings.externalActionStatus, "verified"))
+      )
+    );
+  }
+
+  async getBookingsPendingVerification(): Promise<Booking[]> {
+    return db.select().from(bookings).where(
+      and(
+        eq(bookings.status, "approved"),
+        eq(bookings.externalActionStatus, "user_completed")
+      )
+    ).orderBy(bookings.bookingDate);
+  }
+
+  async getBookingsWithPendingActions(): Promise<Booking[]> {
+    return db.select().from(bookings).where(
+      and(
+        eq(bookings.status, "approved"),
+        or(
+          eq(bookings.externalActionStatus, "pending"),
+          eq(bookings.externalActionStatus, "user_completed"),
+          eq(bookings.externalActionStatus, "rejected"),
+          isNull(bookings.externalActionStatus)
+        ),
+        gte(bookings.bookingDate, new Date().toISOString().split('T')[0])
+      )
+    ).orderBy(bookings.bookingDate);
+  }
+
+  async markExternalActionUserCompleted(bookingId: string): Promise<Booking | undefined> {
+    const result = await db.update(bookings)
+      .set({ 
+        externalActionStatus: "user_completed",
+        externalActionCompletedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(bookings.id, bookingId))
+      .returning();
+    return result[0];
+  }
+
+  async verifyExternalAction(bookingId: string): Promise<Booking | undefined> {
+    const result = await db.update(bookings)
+      .set({ 
+        externalActionStatus: "verified",
+        externalActionVerifiedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(bookings.id, bookingId))
+      .returning();
+    return result[0];
+  }
+
+  async rejectExternalAction(bookingId: string): Promise<Booking | undefined> {
+    const result = await db.update(bookings)
+      .set({ 
+        externalActionStatus: "rejected",
+        externalActionCompletedAt: null,
+        updatedAt: new Date()
+      })
+      .where(eq(bookings.id, bookingId))
+      .returning();
+    return result[0];
+  }
+
+  async markWarningSent(bookingId: string): Promise<void> {
+    await db.update(bookings)
+      .set({ 
+        externalActionWarningSentAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(bookings.id, bookingId));
+  }
+
+  async markDeadlineWarningSent(bookingId: string): Promise<void> {
+    await db.update(bookings)
+      .set({ 
+        externalActionDeadlineWarningSentAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(bookings.id, bookingId));
+  }
+
+  async cancelBookingDueToDeadline(bookingId: string): Promise<Booking | undefined> {
+    const result = await db.update(bookings)
+      .set({ 
+        status: "cancelled",
+        externalActionCancelledAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(bookings.id, bookingId))
+      .returning();
+    return result[0];
+  }
+
+  async getAdminUsers(): Promise<User[]> {
+    return db.select().from(users).where(
+      or(
+        eq(users.isAdmin, true),
+        eq(users.role, 'admin'),
+        eq(users.role, 'superadmin')
+      )
+    );
+  }
+
   async createSession(token: string, userId: string, expiresAt: Date): Promise<void> {
     console.log(`[Storage] Creating session for user ${userId}, token: ${token.slice(0, 8)}...`);
     try {

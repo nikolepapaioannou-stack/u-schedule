@@ -7,6 +7,7 @@ import { AppIcon } from "@/components/AppIcon";
 
 import AdminDashboardScreen from "@/screens/AdminDashboardScreen";
 import PendingApprovalsScreen from "@/screens/PendingApprovalsScreen";
+import ExternalActionsScreen from "@/screens/ExternalActionsScreen";
 import CalendarScreen from "@/screens/CalendarScreen";
 import SettingsScreen from "@/screens/SettingsScreen";
 import UserManagementScreen from "@/screens/UserManagementScreen";
@@ -14,6 +15,7 @@ import UserManagementScreen from "@/screens/UserManagementScreen";
 export type AdminTabParamList = {
   Dashboard: undefined;
   Pending: undefined;
+  ExternalActions: undefined;
   Calendar: undefined;
   Users: undefined;
   Settings: undefined;
@@ -67,6 +69,16 @@ export default function AdminTabNavigator() {
           title: "Εκκρεμείς",
           tabBarIcon: ({ color, size }) => (
             <AppIcon name="clock-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="ExternalActions"
+        component={ExternalActionsScreen}
+        options={{
+          title: "Ενέργειες",
+          tabBarIcon: ({ color, size }) => (
+            <AppIcon name="clipboard-check-outline" size={size} color={color} />
           ),
         }}
       />

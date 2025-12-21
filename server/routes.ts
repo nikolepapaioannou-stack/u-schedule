@@ -1884,6 +1884,211 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // External action tracking endpoints
+  
+  // Get bookings with pending actions (for admin dashboard)
+  app.get("/api/external-actions/pending", async (req, res) => {
+    const userId = await requireAdmin(req, res);
+    if (!userId) return;
+    
+    try {
+      const bookings = await storage.getBookingsWithPendingActions();
+      res.json(bookings);
+    } catch (error) {
+      console.error("Error fetching pending actions:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την ανάκτηση εκκρεμοτήτων" });
+    }
+  });
+  
+  // Get bookings pending verification (user marked complete, admin needs to verify)
+  app.get("/api/external-actions/pending-verification", async (req, res) => {
+    const userId = await requireAdmin(req, res);
+    if (!userId) return;
+    
+    try {
+      const bookings = await storage.getBookingsPendingVerification();
+      res.json(bookings);
+    } catch (error) {
+      console.error("Error fetching pending verification:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την ανάκτηση προς επαλήθευση" });
+    }
+  });
+  
+  // User marks external action as completed
+  app.post("/api/bookings/:id/external-action/complete", async (req, res) => {
+    const userId = await requireAuth(req, res);
+    if (!userId) return;
+    
+    try {
+      const { id } = req.params;
+      const booking = await storage.getBooking(id);
+      
+      if (!booking) {
+        return res.status(404).json({ error: "Η κράτηση δεν βρέθηκε" });
+      }
+      
+      if (booking.userId !== userId) {
+        return res.status(403).json({ error: "Δεν έχετε πρόσβαση σε αυτή την κράτηση" });
+      }
+      
+      if (booking.status !== "approved") {
+        return res.status(400).json({ error: "Η κράτηση δεν είναι εγκεκριμένη" });
+      }
+      
+      const updated = await storage.markExternalActionUserCompleted(id);
+      
+      // Notify admins
+      const admins = await storage.getAdminUsers();
+      for (const admin of admins) {
+        await storage.createNotification({
+          userId: admin.id,
+          type: 'action_user_completed',
+          title: 'Εξωτερική Ενέργεια Προς Επαλήθευση',
+          message: `Ο χρήστης σημείωσε ότι ολοκλήρωσε την εξωτερική ενέργεια για το τμήμα ${booking.departmentId} (${booking.bookingDate}). Παρακαλώ επιβεβαιώστε.`,
+          bookingId: id,
+        });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error marking action complete:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την ενημέρωση" });
+    }
+  });
+  
+  // Admin verifies external action
+  app.post("/api/bookings/:id/external-action/verify", async (req, res) => {
+    const userId = await requireAdmin(req, res);
+    if (!userId) return;
+    
+    try {
+      const { id } = req.params;
+      const booking = await storage.getBooking(id);
+      
+      if (!booking) {
+        return res.status(404).json({ error: "Η κράτηση δεν βρέθηκε" });
+      }
+      
+      if (booking.status !== "approved") {
+        return res.status(400).json({ error: "Η κράτηση δεν είναι εγκεκριμένη" });
+      }
+      
+      if (booking.externalActionStatus === "verified") {
+        return res.status(400).json({ error: "Η ενέργεια είναι ήδη επαληθευμένη" });
+      }
+      
+      const updated = await storage.verifyExternalAction(id);
+      
+      // Notify user
+      await storage.createNotification({
+        userId: booking.userId,
+        type: 'action_verified',
+        title: 'Επιβεβαίωση Εξωτερικής Ενέργειας',
+        message: `Η εξωτερική ενέργεια για το τμήμα ${booking.departmentId} (${booking.bookingDate}) επιβεβαιώθηκε επιτυχώς. Η εξέταση θα διεξαχθεί κανονικά.`,
+        bookingId: id,
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error verifying action:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την επιβεβαίωση" });
+    }
+  });
+  
+  // Admin rejects external action (user needs to redo)
+  app.post("/api/bookings/:id/external-action/reject", async (req, res) => {
+    const userId = await requireAdmin(req, res);
+    if (!userId) return;
+    
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const booking = await storage.getBooking(id);
+      
+      if (!booking) {
+        return res.status(404).json({ error: "Η κράτηση δεν βρέθηκε" });
+      }
+      
+      if (booking.status !== "approved") {
+        return res.status(400).json({ error: "Η κράτηση δεν είναι εγκεκριμένη" });
+      }
+      
+      if (booking.externalActionStatus !== "user_completed") {
+        return res.status(400).json({ error: "Η ενέργεια δεν είναι σε κατάσταση προς επαλήθευση" });
+      }
+      
+      const updated = await storage.rejectExternalAction(id);
+      
+      // Notify user
+      await storage.createNotification({
+        userId: booking.userId,
+        type: 'action_rejected',
+        title: 'Απόρριψη Εξωτερικής Ενέργειας',
+        message: `Η εξωτερική ενέργεια για το τμήμα ${booking.departmentId} (${booking.bookingDate}) απορρίφθηκε. ${reason ? `Λόγος: ${reason}` : 'Παρακαλώ επαναλάβετε την ενέργεια.'}`,
+        bookingId: id,
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error rejecting action:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την απόρριψη" });
+    }
+  });
+  
+  // Admin directly marks action as verified (without user input)
+  app.post("/api/bookings/:id/external-action/admin-complete", async (req, res) => {
+    const userId = await requireAdmin(req, res);
+    if (!userId) return;
+    
+    try {
+      const { id } = req.params;
+      const booking = await storage.getBooking(id);
+      
+      if (!booking) {
+        return res.status(404).json({ error: "Η κράτηση δεν βρέθηκε" });
+      }
+      
+      if (booking.status !== "approved") {
+        return res.status(400).json({ error: "Η κράτηση δεν είναι εγκεκριμένη" });
+      }
+      
+      if (booking.externalActionStatus === "verified") {
+        return res.status(400).json({ error: "Η ενέργεια είναι ήδη επαληθευμένη" });
+      }
+      
+      const updated = await storage.verifyExternalAction(id);
+      
+      // Notify user
+      await storage.createNotification({
+        userId: booking.userId,
+        type: 'action_verified',
+        title: 'Ολοκλήρωση Εξωτερικής Ενέργειας',
+        message: `Η εξωτερική ενέργεια για το τμήμα ${booking.departmentId} (${booking.bookingDate}) ολοκληρώθηκε από τον διαχειριστή. Η εξέταση θα διεξαχθεί κανονικά.`,
+        bookingId: id,
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error admin completing action:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την ολοκλήρωση" });
+    }
+  });
+  
+  // Manual trigger for scheduler (for testing)
+  app.post("/api/admin/trigger-scheduler", async (req, res) => {
+    const userId = await requireAdmin(req, res);
+    if (!userId) return;
+    
+    try {
+      const { runManualCheck } = await import('./scheduler');
+      await runManualCheck();
+      res.json({ success: true, message: "Scheduler executed successfully" });
+    } catch (error) {
+      console.error("Error triggering scheduler:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την εκτέλεση του scheduler" });
+    }
+  });
+
   app.get("/api/proctor-rosters/capacity/:date/:shiftId", async (req, res) => {
     const userId = await requireAuth(req, res);
     if (!userId) return;
