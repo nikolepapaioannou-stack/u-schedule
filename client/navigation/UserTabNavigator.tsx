@@ -30,7 +30,8 @@ export default function UserTabNavigator() {
   const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ["/api/notifications/unread-count"],
     queryFn: () => authFetch("/api/notifications/unread-count"),
-    refetchInterval: 30000,
+    refetchInterval: 10000,
+    staleTime: 0,
   });
   const unreadCount = unreadData?.count || 0;
 

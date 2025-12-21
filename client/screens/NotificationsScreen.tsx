@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { StyleSheet, View, FlatList, RefreshControl, ViewStyle, Pressable } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -42,7 +43,15 @@ export default function NotificationsScreen() {
     queryKey: ["/api/notifications"],
     queryFn: () => authFetch("/api/notifications"),
     refetchOnWindowFocus: true,
+    staleTime: 0,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+    }, [refetch, queryClient])
+  );
 
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
