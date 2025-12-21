@@ -8,7 +8,31 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Platform,
 } from "react-native";
+
+function crossPlatformConfirm(
+  title: string,
+  message: string,
+  onConfirm: () => void,
+  confirmText: string = "OK",
+  isDestructive: boolean = false
+) {
+  if (Platform.OS === "web") {
+    if (window.confirm(`${title}\n\n${message}`)) {
+      onConfirm();
+    }
+  } else {
+    Alert.alert(title, message, [
+      { text: "Ακύρωση", style: "cancel" },
+      {
+        text: confirmText,
+        style: isDestructive ? "destructive" : "default",
+        onPress: onConfirm,
+      },
+    ]);
+  }
+}
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -125,45 +149,30 @@ export default function ExternalActionsScreen() {
   const isActionPending = verifyMutation.isPending || rejectMutation.isPending || adminCompleteMutation.isPending;
 
   const handleVerify = (bookingId: string) => {
-    Alert.alert(
+    crossPlatformConfirm(
       "Επιβεβαίωση",
       "Είστε σίγουροι ότι η εξωτερική ενέργεια ολοκληρώθηκε σωστά;",
-      [
-        { text: "Ακύρωση", style: "cancel" },
-        {
-          text: "Επιβεβαίωση",
-          onPress: () => verifyMutation.mutate(bookingId),
-        },
-      ]
+      () => verifyMutation.mutate(bookingId),
+      "Επιβεβαίωση"
     );
   };
 
   const handleReject = (bookingId: string) => {
-    Alert.alert(
+    crossPlatformConfirm(
       "Απόρριψη",
       "Θέλετε να απορρίψετε την εξωτερική ενέργεια; Ο χρήστης θα ειδοποιηθεί να την επαναλάβει.",
-      [
-        { text: "Ακύρωση", style: "cancel" },
-        {
-          text: "Απόρριψη",
-          style: "destructive",
-          onPress: () => rejectMutation.mutate({ bookingId }),
-        },
-      ]
+      () => rejectMutation.mutate({ bookingId }),
+      "Απόρριψη",
+      true
     );
   };
 
   const handleAdminComplete = (bookingId: string) => {
-    Alert.alert(
+    crossPlatformConfirm(
       "Ολοκλήρωση από Admin",
       "Θέλετε να σημειώσετε την ενέργεια ως ολοκληρωμένη;",
-      [
-        { text: "Ακύρωση", style: "cancel" },
-        {
-          text: "Ολοκλήρωση",
-          onPress: () => adminCompleteMutation.mutate(bookingId),
-        },
-      ]
+      () => adminCompleteMutation.mutate(bookingId),
+      "Ολοκλήρωση"
     );
   };
 
