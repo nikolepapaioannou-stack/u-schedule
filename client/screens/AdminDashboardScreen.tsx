@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from "react";
-import { StyleSheet, View, FlatList, RefreshControl, Pressable, TextInput, ActivityIndicator, Platform, Alert } from "react-native";
+import React, { useState, useCallback, useMemo, useRef } from "react";
+import { StyleSheet, View, FlatList, RefreshControl, Pressable, TextInput, ActivityIndicator, Platform, Alert, TextInput as TextInputType } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -57,6 +57,7 @@ export default function AdminDashboardScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const searchInputRef = useRef<TextInputType>(null);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -196,6 +197,7 @@ export default function AdminDashboardScreen() {
         </View>
         <View style={styles.searchRow}>
           <TextInput
+            ref={searchInputRef}
             style={[
               styles.searchInput,
               { 
@@ -212,6 +214,7 @@ export default function AdminDashboardScreen() {
             returnKeyType="search"
             autoCapitalize="none"
             autoCorrect={false}
+            blurOnSubmit={false}
           />
           <Pressable
             style={[
@@ -258,6 +261,7 @@ export default function AdminDashboardScreen() {
         data={recentBookings}
         keyExtractor={(item) => item.id}
         renderItem={renderBookingItem}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.listContent,
           { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.xl },
