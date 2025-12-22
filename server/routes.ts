@@ -2183,6 +2183,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get booking history
+  app.get("/api/bookings/:id/history", async (req, res) => {
+    const userId = await requireAuth(req, res);
+    if (!userId) return;
+    
+    try {
+      const { id } = req.params;
+      const booking = await storage.getBooking(id);
+      
+      if (!booking) {
+        return res.status(404).json({ error: "Η κράτηση δεν βρέθηκε" });
+      }
+      
+      // Users can only see their own booking history, admins can see all
+      const user = await storage.getUser(userId);
+      if (booking.userId !== userId && !user?.isAdmin) {
+        return res.status(403).json({ error: "Δεν έχετε πρόσβαση σε αυτό το ιστορικό" });
+      }
+      
+      const history = await storage.getBookingHistory(id);
+      
+      // Enrich with performer names
+      const enrichedHistory = await Promise.all(history.map(async (entry) => {
+        let performerName = null;
+        if (entry.performedBy) {
+          const performer = await storage.getUser(entry.performedBy);
+          performerName = performer?.email?.split('@')[0] || 'Χρήστης';
+        }
+        return { ...entry, performerName };
+      }));
+      
+      res.json(enrichedHistory);
+    } catch (error) {
+      console.error("Error fetching booking history:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την ανάκτηση ιστορικού" });
+    }
+  });
+  
+  // Search booking by confirmation number (admin only)
+  app.get("/api/admin/bookings/search", async (req, res) => {
+    const userId = await requireAdmin(req, res);
+    if (!userId) return;
+    
+    try {
+      const { confirmationNumber } = req.query;
+      
+      if (!confirmationNumber || typeof confirmationNumber !== 'string') {
+        return res.status(400).json({ error: "Απαιτείται αριθμός επιβεβαίωσης" });
+      }
+      
+      const booking = await storage.getBookingByConfirmationNumber(confirmationNumber);
+      
+      if (!booking) {
+        return res.status(404).json({ error: "Δεν βρέθηκε κράτηση με αυτόν τον αριθμό" });
+      }
+      
+      // Get user info
+      const user = await storage.getUser(booking.userId);
+      
+      res.json({
+        ...booking,
+        userEmail: user?.email,
+        userUgrId: user?.ugrId,
+      });
+    } catch (error) {
+      console.error("Error searching booking:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την αναζήτηση" });
+    }
+  });
+  
   // Manual trigger for scheduler (for testing)
   app.post("/api/admin/trigger-scheduler", async (req, res) => {
     const userId = await requireAdmin(req, res);
