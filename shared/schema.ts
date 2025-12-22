@@ -159,6 +159,36 @@ export const sessions = pgTable("sessions", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const bookingHistoryEventTypes = [
+  "created",
+  "submitted",
+  "approved",
+  "rejected",
+  "cancelled",
+  "hold_expired",
+  "voucher_warning_sent",
+  "voucher_deadline_warning_sent",
+  "voucher_user_completed",
+  "voucher_verified",
+  "voucher_rejected",
+  "voucher_auto_cancelled",
+  "admin_note_added",
+  "status_changed",
+] as const;
+export type BookingHistoryEventType = typeof bookingHistoryEventTypes[number];
+
+export const bookingHistory = pgTable("booking_history", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  bookingId: varchar("booking_id").notNull().references(() => bookings.id),
+  eventType: text("event_type").notNull(),
+  description: text("description").notNull(),
+  performedBy: varchar("performed_by").references(() => users.id),
+  metadata: text("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
@@ -244,3 +274,4 @@ export type PushToken = typeof pushTokens.$inferSelect;
 export type ProctorRoster = typeof proctorRosters.$inferSelect;
 export type ProctorHourlyCapacity = typeof proctorHourlyCapacities.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
+export type BookingHistory = typeof bookingHistory.$inferSelect;

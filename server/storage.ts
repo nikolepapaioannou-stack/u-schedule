@@ -17,6 +17,8 @@ import {
   type ProctorRoster,
   type ProctorHourlyCapacity,
   type Session,
+  type BookingHistory,
+  type BookingHistoryEventType,
   users,
   shifts,
   closedDates,
@@ -28,6 +30,7 @@ import {
   proctorRosters,
   proctorHourlyCapacities,
   sessions,
+  bookingHistory,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -104,6 +107,11 @@ export interface IStorage {
   deleteHourlyCapacitiesByDateRange(startDate: string, endDate: string): Promise<void>;
   
   getBookingsByDateAndHour(date: string, hour: number): Promise<Booking[]>;
+  
+  getNextConfirmationNumber(): Promise<string>;
+  addBookingHistory(entry: { bookingId: string; eventType: BookingHistoryEventType; description: string; performedBy?: string; metadata?: string }): Promise<BookingHistory>;
+  getBookingHistory(bookingId: string): Promise<BookingHistory[]>;
+  getBookingByConfirmationNumber(confirmationNumber: string): Promise<Booking | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -272,7 +280,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBooking(booking: InsertBooking & { userId: string }): Promise<Booking> {
-    const confirmationNumber = `EX${Date.now().toString(36).toUpperCase()}${randomUUID().slice(0, 4).toUpperCase()}`;
+    const confirmationNumber = await this.getNextConfirmationNumber();
     const holdExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
     
     const result = await db.insert(bookings).values({
@@ -281,7 +289,23 @@ export class DatabaseStorage implements IStorage {
       holdExpiresAt,
       confirmationNumber,
     }).returning();
-    return result[0];
+    
+    const newBooking = result[0];
+    
+    await this.addBookingHistory({
+      bookingId: newBooking.id,
+      eventType: "created",
+      description: `Κράτηση δημιουργήθηκε με αριθμό ${confirmationNumber}`,
+      performedBy: booking.userId,
+      metadata: JSON.stringify({
+        departmentId: booking.departmentId,
+        candidateCount: booking.candidateCount,
+        bookingDate: booking.bookingDate,
+        preferredShift: booking.preferredShift,
+      }),
+    });
+    
+    return newBooking;
   }
 
   async updateBooking(id: string, booking: Partial<Booking>): Promise<Booking | undefined> {
@@ -658,6 +682,50 @@ export class DatabaseStorage implements IStorage {
 
   async deleteExpiredSessions(): Promise<void> {
     await db.delete(sessions).where(lte(sessions.expiresAt, new Date()));
+  }
+
+  async getNextConfirmationNumber(): Promise<string> {
+    const allBookings = await db.select({ confirmationNumber: bookings.confirmationNumber })
+      .from(bookings)
+      .where(not(isNull(bookings.confirmationNumber)));
+    
+    let maxNum = 0;
+    for (const b of allBookings) {
+      if (b.confirmationNumber) {
+        const num = parseInt(b.confirmationNumber, 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+    
+    const nextNum = maxNum + 1;
+    return nextNum.toString().padStart(6, '0');
+  }
+
+  async addBookingHistory(entry: { bookingId: string; eventType: BookingHistoryEventType; description: string; performedBy?: string; metadata?: string }): Promise<BookingHistory> {
+    const result = await db.insert(bookingHistory).values({
+      bookingId: entry.bookingId,
+      eventType: entry.eventType,
+      description: entry.description,
+      performedBy: entry.performedBy,
+      metadata: entry.metadata,
+    }).returning();
+    return result[0];
+  }
+
+  async getBookingHistory(bookingId: string): Promise<BookingHistory[]> {
+    return db.select()
+      .from(bookingHistory)
+      .where(eq(bookingHistory.bookingId, bookingId))
+      .orderBy(desc(bookingHistory.createdAt));
+  }
+
+  async getBookingByConfirmationNumber(confirmationNumber: string): Promise<Booking | undefined> {
+    const result = await db.select()
+      .from(bookings)
+      .where(eq(bookings.confirmationNumber, confirmationNumber));
+    return result[0];
   }
 }
 

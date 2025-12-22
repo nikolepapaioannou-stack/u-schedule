@@ -1065,6 +1065,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
     
     if (updated) {
+      await storage.addBookingHistory({
+        bookingId: id,
+        eventType: "approved",
+        description: `Κράτηση εγκρίθηκε${isOverCapacity && forceApprove ? " (υπέρβαση χωρητικότητας)" : ""}`,
+        performedBy: adminId,
+        metadata: adminNotes ? JSON.stringify({ adminNotes }) : undefined,
+      });
+      
       broadcastBookingEvent({
         type: 'booking:approved',
         booking: {
@@ -1116,6 +1124,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!updated) {
       return res.status(404).json({ error: "Η κράτηση δεν βρέθηκε" });
     }
+    
+    await storage.addBookingHistory({
+      bookingId: id,
+      eventType: "rejected",
+      description: `Κράτηση απορρίφθηκε: ${adminNotes}`,
+      performedBy: adminId,
+      metadata: JSON.stringify({ adminNotes }),
+    });
     
     broadcastBookingEvent({
       type: 'booking:rejected',
@@ -1985,6 +2001,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updated = await storage.markExternalActionUserCompleted(id);
       
+      await storage.addBookingHistory({
+        bookingId: id,
+        eventType: "voucher_user_completed",
+        description: "Ο χρήστης δήλωσε ολοκλήρωση ανάρτησης voucher",
+        performedBy: userId,
+      });
+      
       // Format date as DD/MM/YYYY
       const examDate = new Date(booking.bookingDate);
       const formattedDate = `${String(examDate.getDate()).padStart(2, '0')}/${String(examDate.getMonth() + 1).padStart(2, '0')}/${examDate.getFullYear()}`;
@@ -2010,8 +2033,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Admin verifies external action
   app.post("/api/bookings/:id/external-action/verify", async (req, res) => {
-    const userId = await requireAdmin(req, res);
-    if (!userId) return;
+    const adminId = await requireAdmin(req, res);
+    if (!adminId) return;
     
     try {
       const { id } = req.params;
@@ -2030,6 +2053,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const updated = await storage.verifyExternalAction(id);
+      
+      await storage.addBookingHistory({
+        bookingId: id,
+        eventType: "voucher_verified",
+        description: "Η ανάρτηση voucher επιβεβαιώθηκε από διαχειριστή",
+        performedBy: adminId,
+      });
       
       // Format date as DD/MM/YYYY
       const examDate = new Date(booking.bookingDate);
@@ -2053,8 +2083,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Admin rejects external action (user needs to redo)
   app.post("/api/bookings/:id/external-action/reject", async (req, res) => {
-    const userId = await requireAdmin(req, res);
-    if (!userId) return;
+    const adminId = await requireAdmin(req, res);
+    if (!adminId) return;
     
     try {
       const { id } = req.params;
@@ -2074,6 +2104,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const updated = await storage.rejectExternalAction(id);
+      
+      await storage.addBookingHistory({
+        bookingId: id,
+        eventType: "voucher_rejected",
+        description: `Η ανάρτηση voucher απορρίφθηκε${reason ? `: ${reason}` : ""}`,
+        performedBy: adminId,
+        metadata: reason ? JSON.stringify({ reason }) : undefined,
+      });
       
       // Format date as DD/MM/YYYY
       const examDate = new Date(booking.bookingDate);
@@ -2097,8 +2135,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Admin directly marks action as verified (without user input)
   app.post("/api/bookings/:id/external-action/admin-complete", async (req, res) => {
-    const userId = await requireAdmin(req, res);
-    if (!userId) return;
+    const adminId = await requireAdmin(req, res);
+    if (!adminId) return;
     
     try {
       const { id } = req.params;
@@ -2117,6 +2155,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const updated = await storage.verifyExternalAction(id);
+      
+      await storage.addBookingHistory({
+        bookingId: id,
+        eventType: "voucher_admin_completed",
+        description: "Η ανάρτηση voucher ολοκληρώθηκε άμεσα από διαχειριστή",
+        performedBy: adminId,
+      });
       
       // Format date as DD/MM/YYYY
       const examDate = new Date(booking.bookingDate);
