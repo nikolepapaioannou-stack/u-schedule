@@ -183,56 +183,8 @@ export default function AdminDashboardScreen() {
     );
   };
 
-  const ListHeader = () => (
+  const ListHeader = useMemo(() => (
     <View style={styles.header}>
-      <HeaderTitle title="ExamScheduler" />
-      <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
-        Καλώς ήρθατε, Διαχειριστή
-      </ThemedText>
-
-      <Card elevation={1} style={styles.searchCard}>
-        <View style={styles.searchHeader}>
-          <Feather name="search" size={16} color={theme.primary} />
-          <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>Αναζήτηση Κράτησης</ThemedText>
-        </View>
-        <View style={styles.searchRow}>
-          <TextInput
-            ref={searchInputRef}
-            style={[
-              styles.searchInput,
-              { 
-                backgroundColor: theme.backgroundSecondary, 
-                color: theme.text,
-                borderColor: theme.border,
-              }
-            ]}
-            placeholder="Αριθμός επιβεβαίωσης (π.χ. 000001)"
-            placeholderTextColor={theme.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearch}
-            returnKeyType="search"
-            autoCapitalize="none"
-            autoCorrect={false}
-            blurOnSubmit={false}
-          />
-          <Pressable
-            style={[
-              styles.searchButton,
-              { backgroundColor: theme.primary, opacity: isSearching || !searchQuery.trim() ? 0.6 : 1 }
-            ]}
-            onPress={handleSearch}
-            disabled={isSearching || !searchQuery.trim()}
-          >
-            {isSearching ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Feather name="arrow-right" size={18} color="#fff" />
-            )}
-          </Pressable>
-        </View>
-      </Card>
-
       <View style={styles.statsGrid}>
         <StatCard icon="calendar" label="Σήμερα" value={stats.todayBookings} color={theme.primary} />
         <StatCard icon="clock" label="Εκκρεμείς" value={stats.pendingApprovals} color={theme.warning} />
@@ -244,7 +196,7 @@ export default function AdminDashboardScreen() {
         <ThemedText type="h3">Πρόσφατες Κρατήσεις</ThemedText>
       </View>
     </View>
-  );
+  ), [stats, theme]);
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -257,6 +209,55 @@ export default function AdminDashboardScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <View style={[styles.fixedSearchContainer, { paddingTop: insets.top + Spacing.xl }]}>
+        <View style={styles.headerTop}>
+          <HeaderTitle title="ExamScheduler" />
+          <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
+            Καλώς ήρθατε, Διαχειριστή
+          </ThemedText>
+        </View>
+        <Card elevation={1} style={styles.searchCard}>
+          <View style={styles.searchHeader}>
+            <Feather name="search" size={16} color={theme.primary} />
+            <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>Αναζήτηση Κράτησης</ThemedText>
+          </View>
+          <View style={styles.searchRow}>
+            <TextInput
+              ref={searchInputRef}
+              style={[
+                styles.searchInput,
+                { 
+                  backgroundColor: theme.backgroundSecondary, 
+                  color: theme.text,
+                  borderColor: theme.border,
+                }
+              ]}
+              placeholder="Αριθμός επιβεβαίωσης (π.χ. 000001)"
+              placeholderTextColor={theme.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSubmitEditing={handleSearch}
+              returnKeyType="search"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Pressable
+              style={[
+                styles.searchButton,
+                { backgroundColor: theme.primary, opacity: isSearching || !searchQuery.trim() ? 0.6 : 1 }
+              ]}
+              onPress={handleSearch}
+              disabled={isSearching || !searchQuery.trim()}
+            >
+              {isSearching ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Feather name="arrow-right" size={18} color="#fff" />
+              )}
+            </Pressable>
+          </View>
+        </Card>
+      </View>
       <FlatList
         data={recentBookings}
         keyExtractor={(item) => item.id}
@@ -264,7 +265,7 @@ export default function AdminDashboardScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.listContent,
-          { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.xl },
+          { paddingBottom: insets.bottom + Spacing.xl },
         ]}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={!isLoading ? renderEmptyState : null}
@@ -284,6 +285,12 @@ export default function AdminDashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  fixedSearchContainer: {
+    paddingHorizontal: Spacing.xl,
+  },
+  headerTop: {
+    marginBottom: Spacing.sm,
   },
   listContent: {
     paddingHorizontal: Spacing.xl,
