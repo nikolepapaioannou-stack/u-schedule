@@ -2233,16 +2233,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Απαιτείται αριθμός επιβεβαίωσης" });
       }
       
-      // Normalize and validate: pad with zeros to 6 digits if numeric
       const trimmed = confirmationNumber.trim();
-      const numericOnly = trimmed.replace(/\D/g, '');
       
-      if (!numericOnly || numericOnly.length > 6) {
-        return res.status(400).json({ error: "Μη έγκυρος αριθμός επιβεβαίωσης" });
+      if (!trimmed) {
+        return res.status(400).json({ error: "Απαιτείται αριθμός επιβεβαίωσης" });
       }
       
-      const normalizedNumber = numericOnly.padStart(6, '0');
-      const booking = await storage.getBookingByConfirmationNumber(normalizedNumber);
+      // Try exact match first (for alphanumeric codes like EXMJGF7776D49A)
+      let booking = await storage.getBookingByConfirmationNumber(trimmed);
+      
+      // If not found and input is numeric, try zero-padded format
+      if (!booking) {
+        const numericOnly = trimmed.replace(/\D/g, '');
+        if (numericOnly && numericOnly.length <= 6) {
+          const normalizedNumber = numericOnly.padStart(6, '0');
+          booking = await storage.getBookingByConfirmationNumber(normalizedNumber);
+        }
+      }
       
       if (!booking) {
         return res.status(404).json({ error: "Δεν βρέθηκε κράτηση με αυτόν τον αριθμό" });
