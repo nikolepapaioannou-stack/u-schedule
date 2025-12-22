@@ -3,7 +3,7 @@ import { StyleSheet, View, ActivityIndicator, Pressable, Platform, Text, Alert }
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRoute, RouteProp } from "@react-navigation/native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -79,6 +79,9 @@ export default function BookingDetailsScreen() {
 
   const [booking, setBooking] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   const completeVoucherMutation = useMutation({
     mutationFn: () =>
@@ -89,6 +92,9 @@ export default function BookingDetailsScreen() {
       setBooking((prev: any) => ({ ...prev, externalActionStatus: "user_completed" }));
       queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/external-actions/pending"] });
+      if (historyExpanded) {
+        fetchHistory(true);
+      }
     },
   });
 
@@ -116,6 +122,61 @@ export default function BookingDetailsScreen() {
       setIsLoading(false);
     }
   }
+
+  async function fetchHistory(forceRefresh = false) {
+    if (isLoadingHistory) return;
+    if (!forceRefresh && history.length > 0) return;
+    setIsLoadingHistory(true);
+    try {
+      const data = await authFetch(`/api/bookings/${bookingId}/history`);
+      setHistory(data);
+    } catch (error) {
+      console.error("Failed to fetch history:", error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }
+
+  const toggleHistory = () => {
+    if (!historyExpanded) {
+      fetchHistory();
+    }
+    setHistoryExpanded(!historyExpanded);
+  };
+
+  const getEventIcon = (eventType: string): string => {
+    const icons: Record<string, string> = {
+      created: "plus-circle",
+      submitted: "send",
+      approved: "check-circle",
+      rejected: "x-circle",
+      cancelled: "slash",
+      hold_expired: "clock",
+      voucher_warning_sent: "bell",
+      voucher_deadline_warning_sent: "alert-triangle",
+      voucher_user_completed: "check",
+      voucher_verified: "check-circle",
+      voucher_rejected: "x-circle",
+      voucher_auto_cancelled: "alert-circle",
+      voucher_admin_completed: "shield-check",
+      admin_note_added: "edit-3",
+      status_changed: "refresh-cw",
+    };
+    return icons[eventType] || "activity";
+  };
+
+  const getEventColor = (eventType: string): string => {
+    if (eventType.includes("approved") || eventType.includes("verified") || eventType.includes("completed")) {
+      return theme.success;
+    }
+    if (eventType.includes("rejected") || eventType.includes("cancelled")) {
+      return theme.error;
+    }
+    if (eventType.includes("warning")) {
+      return theme.warning;
+    }
+    return theme.primary;
+  };
 
   if (isLoading) {
     return (
@@ -318,6 +379,65 @@ export default function BookingDetailsScreen() {
           </Card>
         ) : null}
 
+        <Card elevation={1} style={styles.historyCard}>
+          <Pressable onPress={toggleHistory} style={styles.historyHeader}>
+            <View style={styles.historyHeaderLeft}>
+              <Feather name="clock" size={18} color={theme.primary} />
+              <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>Ιστορικό Κράτησης</ThemedText>
+            </View>
+            <Feather 
+              name={historyExpanded ? "chevron-up" : "chevron-down"} 
+              size={20} 
+              color={theme.textSecondary} 
+            />
+          </Pressable>
+          
+          {historyExpanded ? (
+            <View style={styles.historyContent}>
+              {isLoadingHistory ? (
+                <ActivityIndicator size="small" color={theme.primary} />
+              ) : history.length === 0 ? (
+                <ThemedText type="small" style={{ color: theme.textSecondary, textAlign: "center" }}>
+                  Δεν υπάρχει ιστορικό
+                </ThemedText>
+              ) : (
+                history.map((entry, index) => (
+                  <View 
+                    key={entry.id} 
+                    style={[
+                      styles.historyEntry,
+                      index < history.length - 1 && styles.historyEntryBorder
+                    ]}
+                  >
+                    <View style={[styles.historyIcon, { backgroundColor: getEventColor(entry.eventType) + "20" }]}>
+                      <Feather 
+                        name={getEventIcon(entry.eventType) as any} 
+                        size={14} 
+                        color={getEventColor(entry.eventType)} 
+                      />
+                    </View>
+                    <View style={styles.historyDetails}>
+                      <ThemedText type="small" style={{ fontWeight: "600" }}>
+                        {entry.description}
+                      </ThemedText>
+                      <View style={styles.historyMeta}>
+                        <ThemedText type="small" style={{ color: theme.textSecondary, fontSize: 11 }}>
+                          {new Date(entry.createdAt).toLocaleString("el-GR")}
+                        </ThemedText>
+                        {entry.performerName ? (
+                          <ThemedText type="small" style={{ color: theme.textSecondary, fontSize: 11 }}>
+                            {" "}· {entry.performerName}
+                          </ThemedText>
+                        ) : null}
+                      </View>
+                    </View>
+                  </View>
+                ))
+              )}
+            </View>
+          ) : null}
+        </Card>
+
         <Card elevation={1} style={styles.timestampCard}>
           <View style={styles.timestampRow}>
             <ThemedText type="small" style={{ color: theme.textSecondary }}>Δημιουργήθηκε:</ThemedText>
@@ -413,5 +533,46 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: 16,
+  },
+  historyCard: {
+    gap: Spacing.sm,
+  },
+  historyHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  historyHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  historyContent: {
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
+  },
+  historyEntry: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingVertical: Spacing.sm,
+  },
+  historyEntryBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(128, 128, 128, 0.2)",
+  },
+  historyIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.sm,
+  },
+  historyDetails: {
+    flex: 1,
+    gap: 2,
+  },
+  historyMeta: {
+    flexDirection: "row",
+    flexWrap: "wrap",
   },
 });

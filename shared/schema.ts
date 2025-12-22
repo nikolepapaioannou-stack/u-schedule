@@ -172,6 +172,7 @@ export const bookingHistoryEventTypes = [
   "voucher_verified",
   "voucher_rejected",
   "voucher_auto_cancelled",
+  "voucher_admin_completed",
   "admin_note_added",
   "status_changed",
 ] as const;

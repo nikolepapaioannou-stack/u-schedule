@@ -2233,7 +2233,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Απαιτείται αριθμός επιβεβαίωσης" });
       }
       
-      const booking = await storage.getBookingByConfirmationNumber(confirmationNumber);
+      // Normalize and validate: pad with zeros to 6 digits if numeric
+      const trimmed = confirmationNumber.trim();
+      const numericOnly = trimmed.replace(/\D/g, '');
+      
+      if (!numericOnly || numericOnly.length > 6) {
+        return res.status(400).json({ error: "Μη έγκυρος αριθμός επιβεβαίωσης" });
+      }
+      
+      const normalizedNumber = numericOnly.padStart(6, '0');
+      const booking = await storage.getBookingByConfirmationNumber(normalizedNumber);
       
       if (!booking) {
         return res.status(404).json({ error: "Δεν βρέθηκε κράτηση με αυτόν τον αριθμό" });

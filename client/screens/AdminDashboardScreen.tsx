@@ -1,9 +1,9 @@
 import React, { useState, useCallback } from "react";
-import { StyleSheet, View, FlatList, RefreshControl, Pressable } from "react-native";
+import { StyleSheet, View, FlatList, RefreshControl, Pressable, TextInput, ActivityIndicator, Platform, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -55,6 +55,8 @@ export default function AdminDashboardScreen() {
   const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -112,6 +114,29 @@ export default function AdminDashboardScreen() {
     fetchDashboardData();
   };
 
+  const handleSearch = async () => {
+    const trimmedQuery = searchQuery.trim();
+    if (!trimmedQuery) return;
+    
+    setIsSearching(true);
+    try {
+      const result = await authFetch(`/api/admin/bookings/search?confirmationNumber=${encodeURIComponent(trimmedQuery)}`);
+      if (result && result.id) {
+        setSearchQuery("");
+        navigation.navigate("BookingDetails", { bookingId: result.id });
+      }
+    } catch (error: any) {
+      const message = error?.message || "Δεν βρέθηκε κράτηση με αυτόν τον αριθμό";
+      if (Platform.OS === "web") {
+        window.alert(message);
+      } else {
+        Alert.alert("Αποτέλεσμα Αναζήτησης", message);
+      }
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("el-GR", {
       day: "2-digit",
@@ -163,6 +188,47 @@ export default function AdminDashboardScreen() {
       <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
         Καλώς ήρθατε, Διαχειριστή
       </ThemedText>
+
+      <Card elevation={1} style={styles.searchCard}>
+        <View style={styles.searchHeader}>
+          <Feather name="search" size={16} color={theme.primary} />
+          <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>Αναζήτηση Κράτησης</ThemedText>
+        </View>
+        <View style={styles.searchRow}>
+          <TextInput
+            style={[
+              styles.searchInput,
+              { 
+                backgroundColor: theme.backgroundSecondary, 
+                color: theme.text,
+                borderColor: theme.border,
+              }
+            ]}
+            placeholder="Αριθμός επιβεβαίωσης (π.χ. 000001)"
+            placeholderTextColor={theme.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Pressable
+            style={[
+              styles.searchButton,
+              { backgroundColor: theme.primary, opacity: isSearching || !searchQuery.trim() ? 0.6 : 1 }
+            ]}
+            onPress={handleSearch}
+            disabled={isSearching || !searchQuery.trim()}
+          >
+            {isSearching ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Feather name="arrow-right" size={18} color="#fff" />
+            )}
+          </Pressable>
+        </View>
+      </Card>
 
       <View style={styles.statsGrid}>
         <StatCard icon="calendar" label="Σήμερα" value={stats.todayBookings} color={theme.primary} />
@@ -269,5 +335,33 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: "center",
     paddingVertical: Spacing["3xl"],
+  },
+  searchCard: {
+    marginTop: Spacing.xl,
+    gap: Spacing.md,
+  },
+  searchHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    height: 44,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    borderWidth: 1,
+    fontSize: 16,
+  },
+  searchButton: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
