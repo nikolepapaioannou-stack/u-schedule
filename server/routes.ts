@@ -2001,7 +2001,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const { id } = req.params;
-      const { proofPhotoBase64 } = req.body || {};
+      let { proofPhotoBase64 } = req.body || {};
+      
+      // Validate photo size (max 5MB base64)
+      if (proofPhotoBase64 && proofPhotoBase64.length > 5 * 1024 * 1024 * 1.37) {
+        return res.status(400).json({ error: "Η φωτογραφία είναι πολύ μεγάλη. Μέγιστο μέγεθος: 5MB" });
+      }
+      
+      // Validate photo format
+      if (proofPhotoBase64 && !proofPhotoBase64.startsWith("data:image/")) {
+        proofPhotoBase64 = null; // Invalid format, ignore
+      }
+      
       const booking = await storage.getBooking(id);
       
       if (!booking) {

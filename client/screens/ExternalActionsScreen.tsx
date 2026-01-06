@@ -9,6 +9,8 @@ import {
   Alert,
   RefreshControl,
   Platform,
+  Image,
+  Modal,
 } from "react-native";
 
 function crossPlatformConfirm(
@@ -115,6 +117,7 @@ export default function ExternalActionsScreen() {
   const authFetch = useAuthenticatedFetch();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<FilterTab>("verification");
+  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
 
   const { data: pendingActions = [], isLoading: loadingPending, refetch: refetchPending } = useQuery<BookingWithReminder[]>({
     queryKey: ["/api/external-actions/pending"],
@@ -297,24 +300,51 @@ export default function ExternalActionsScreen() {
         </View>
 
         {isPendingVerification ? (
-          <View style={styles.actionButtons}>
-            <Pressable
-              style={[styles.actionButton, { backgroundColor: theme.success, opacity: isActionPending ? 0.6 : 1 }]}
-              onPress={() => handleVerify(booking.id)}
-              disabled={isActionPending}
-            >
-              <AppIcon name="check" size={18} color="#fff" />
-              <Text style={styles.actionButtonText}>Επιβεβαίωση</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.actionButton, { backgroundColor: theme.error, opacity: isActionPending ? 0.6 : 1 }]}
-              onPress={() => handleReject(booking.id)}
-              disabled={isActionPending}
-            >
-              <AppIcon name="close" size={18} color="#fff" />
-              <Text style={styles.actionButtonText}>Απόρριψη</Text>
-            </Pressable>
-          </View>
+          <>
+            {booking.externalActionProofPhotoUrl ? (
+              <Pressable 
+                style={styles.proofPhotoContainer}
+                onPress={() => setViewingPhoto(booking.externalActionProofPhotoUrl!)}
+              >
+                <Image 
+                  source={{ uri: booking.externalActionProofPhotoUrl }}
+                  style={styles.proofPhotoThumbnail}
+                  resizeMode="cover"
+                />
+                <View style={[styles.photoLabel, { backgroundColor: theme.success + "20" }]}>
+                  <AppIcon name="check-circle-outline" size={14} color={theme.success} />
+                  <Text style={[styles.photoLabelText, { color: theme.success }]}>
+                    Φωτογραφία Απόδειξης
+                  </Text>
+                </View>
+              </Pressable>
+            ) : (
+              <View style={[styles.noPhotoContainer, { backgroundColor: theme.warning + "20" }]}>
+                <AppIcon name="information-outline" size={16} color={theme.warning} />
+                <Text style={[styles.noPhotoText, { color: theme.warning }]}>
+                  Χωρίς φωτογραφία απόδειξης
+                </Text>
+              </View>
+            )}
+            <View style={styles.actionButtons}>
+              <Pressable
+                style={[styles.actionButton, { backgroundColor: theme.success, opacity: isActionPending ? 0.6 : 1 }]}
+                onPress={() => handleVerify(booking.id)}
+                disabled={isActionPending}
+              >
+                <AppIcon name="check" size={18} color="#fff" />
+                <Text style={styles.actionButtonText}>Επιβεβαίωση</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.actionButton, { backgroundColor: theme.error, opacity: isActionPending ? 0.6 : 1 }]}
+                onPress={() => handleReject(booking.id)}
+                disabled={isActionPending}
+              >
+                <AppIcon name="close" size={18} color="#fff" />
+                <Text style={styles.actionButtonText}>Απόρριψη</Text>
+              </Pressable>
+            </View>
+          </>
         ) : (
           <View style={styles.actionButtons}>
             <Pressable
@@ -423,6 +453,34 @@ export default function ExternalActionsScreen() {
           )}
         </ScrollView>
       )}
+
+      <Modal
+        visible={!!viewingPhoto}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setViewingPhoto(null)}
+      >
+        <Pressable 
+          style={styles.photoModalOverlay}
+          onPress={() => setViewingPhoto(null)}
+        >
+          <View style={styles.photoModalContent}>
+            {viewingPhoto ? (
+              <Image 
+                source={{ uri: viewingPhoto }}
+                style={styles.fullPhoto}
+                resizeMode="contain"
+              />
+            ) : null}
+            <Pressable 
+              style={[styles.closeButton, { backgroundColor: theme.error }]}
+              onPress={() => setViewingPhoto(null)}
+            >
+              <AppIcon name="close" size={24} color="#fff" />
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
@@ -552,5 +610,66 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: 14,
+  },
+  proofPhotoContainer: {
+    marginBottom: Spacing.md,
+  },
+  proofPhotoThumbnail: {
+    width: "100%",
+    height: 120,
+    borderRadius: 8,
+  },
+  photoLabel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    alignSelf: "flex-start",
+    marginTop: 8,
+  },
+  photoLabelText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  noPhotoContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    marginBottom: Spacing.md,
+  },
+  noPhotoText: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  photoModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  photoModalContent: {
+    width: "90%",
+    height: "80%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fullPhoto: {
+    width: "100%",
+    height: "100%",
+  },
+  closeButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

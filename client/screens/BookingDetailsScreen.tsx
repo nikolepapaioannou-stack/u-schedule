@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, ActivityIndicator, Pressable, Platform, Text, Alert } from "react-native";
+import { StyleSheet, View, ActivityIndicator, Pressable, Platform, Text, Alert, Image, Modal } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRoute, RouteProp } from "@react-navigation/native";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import * as ImagePicker from "expo-image-picker";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -82,14 +83,19 @@ export default function BookingDetailsScreen() {
   const [history, setHistory] = useState<any[]>([]);
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [proofPhoto, setProofPhoto] = useState<string | null>(null);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   const completeVoucherMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (photoBase64: string | null) =>
       authFetch(`/api/bookings/${bookingId}/external-action/complete`, {
         method: "POST",
+        body: JSON.stringify({ proofPhotoBase64: photoBase64 }),
       }),
     onSuccess: (updatedBooking) => {
       setBooking((prev: any) => ({ ...prev, externalActionStatus: "user_completed" }));
+      setProofPhoto(null);
+      setShowPhotoModal(false);
       queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/external-actions/pending"] });
       if (historyExpanded) {
@@ -98,11 +104,79 @@ export default function BookingDetailsScreen() {
     },
   });
 
-  const handleCompleteVoucher = () => {
+  const pickImageFromCamera = async () => {
+    if (Platform.OS === "web") {
+      Alert.alert(
+        "Μη Διαθέσιμο",
+        "Η λειτουργία κάμερας είναι διαθέσιμη μόνο στην εφαρμογή Expo Go. Σαρώστε τον QR κωδικό για να χρησιμοποιήσετε αυτή τη λειτουργία."
+      );
+      return;
+    }
+    
+    const { status, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      if (!canAskAgain) {
+        Alert.alert(
+          "Απαιτείται Άδεια",
+          "Η άδεια κάμερας απορρίφθηκε. Παρακαλώ ενεργοποιήστε την από τις Ρυθμίσεις της συσκευής σας."
+        );
+      } else {
+        Alert.alert("Απαιτείται Άδεια", "Χρειαζόμαστε πρόσβαση στην κάμερα για να τραβήξετε φωτογραφία.");
+      }
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      quality: 0.5,
+      base64: true,
+      allowsEditing: true,
+      aspect: [4, 3],
+    });
+
+    if (!result.canceled && result.assets[0].base64) {
+      setProofPhoto(`data:image/jpeg;base64,${result.assets[0].base64}`);
+    }
+  };
+
+  const pickImageFromGallery = async () => {
+    const { status, canAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      if (!canAskAgain && Platform.OS !== "web") {
+        Alert.alert(
+          "Απαιτείται Άδεια",
+          "Η άδεια πρόσβασης στη συλλογή απορρίφθηκε. Παρακαλώ ενεργοποιήστε την από τις Ρυθμίσεις της συσκευής σας."
+        );
+      } else {
+        Alert.alert("Απαιτείται Άδεια", "Χρειαζόμαστε πρόσβαση στη συλλογή για να επιλέξετε φωτογραφία.");
+      }
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.5,
+      base64: true,
+      allowsEditing: true,
+      aspect: [4, 3],
+    });
+
+    if (!result.canceled && result.assets[0].base64) {
+      setProofPhoto(`data:image/jpeg;base64,${result.assets[0].base64}`);
+    }
+  };
+
+  const handleStartVoucherCompletion = () => {
+    setShowPhotoModal(true);
+  };
+
+  const handleSubmitVoucher = () => {
     crossPlatformConfirm(
       "Δήλωση Ανάρτησης Voucher",
-      "Επιβεβαιώνετε ότι έχετε αναρτήσει τους κωδικούς επιταγής πιστοποίησης; Η δήλωση θα αποσταλεί για επαλήθευση από τον διαχειριστή.",
-      () => completeVoucherMutation.mutate(),
+      proofPhoto 
+        ? "Επιβεβαιώνετε ότι έχετε αναρτήσει τους κωδικούς επιταγής πιστοποίησης; Η δήλωση και η φωτογραφία θα αποσταλούν για επαλήθευση."
+        : "Επιβεβαιώνετε ότι έχετε αναρτήσει τους κωδικούς επιταγής πιστοποίησης; Η δήλωση θα αποσταλεί για επαλήθευση. (Δεν έχετε επιλέξει φωτογραφία)",
+      () => completeVoucherMutation.mutate(proofPhoto),
       "Επιβεβαίωση"
     );
   };
@@ -328,19 +402,12 @@ export default function BookingDetailsScreen() {
                     <Pressable
                       style={[
                         styles.voucherButton,
-                        { backgroundColor: theme.primary, opacity: completeVoucherMutation.isPending ? 0.6 : 1 },
+                        { backgroundColor: theme.primary },
                       ]}
-                      onPress={handleCompleteVoucher}
-                      disabled={completeVoucherMutation.isPending}
+                      onPress={handleStartVoucherCompletion}
                     >
-                      {completeVoucherMutation.isPending ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : (
-                        <>
-                          <MaterialCommunityIcons name="check" size={18} color="#fff" />
-                          <Text style={styles.voucherButtonText}>Δήλωσα Ανάρτηση Voucher</Text>
-                        </>
-                      )}
+                      <MaterialCommunityIcons name="camera" size={18} color="#fff" />
+                      <Text style={styles.voucherButtonText}>Δήλωση με Φωτογραφία</Text>
                     </Pressable>
                   ) : null}
                   
@@ -453,6 +520,101 @@ export default function BookingDetailsScreen() {
           </View>
         </Card>
       </KeyboardAwareScrollViewCompat>
+
+      <Modal
+        visible={showPhotoModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          setShowPhotoModal(false);
+          setProofPhoto(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.backgroundSecondary }]}>
+            <View style={styles.modalHeader}>
+              <ThemedText type="h4">Δήλωση Ανάρτησης Voucher</ThemedText>
+              <Pressable 
+                onPress={() => {
+                  setShowPhotoModal(false);
+                  setProofPhoto(null);
+                }}
+              >
+                <MaterialCommunityIcons name="close" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+
+            <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+              Προαιρετικά: Τραβήξτε ή επιλέξτε φωτογραφία ως απόδειξη της ανάρτησης των κωδικών επιταγής πιστοποίησης.
+            </ThemedText>
+            
+            {Platform.OS === "web" ? (
+              <View style={[styles.webNotice, { backgroundColor: theme.info + "20" }]}>
+                <MaterialCommunityIcons name="information" size={16} color={theme.info} />
+                <Text style={[styles.webNoticeText, { color: theme.info }]}>
+                  Για χρήση κάμερας, ανοίξτε την εφαρμογή στο Expo Go στο κινητό σας.
+                </Text>
+              </View>
+            ) : null}
+
+            {proofPhoto ? (
+              <View style={styles.photoPreviewContainer}>
+                <Image 
+                  source={{ uri: proofPhoto }} 
+                  style={styles.photoPreview}
+                  resizeMode="cover"
+                />
+                <Pressable 
+                  style={[styles.removePhotoButton, { backgroundColor: theme.error }]}
+                  onPress={() => setProofPhoto(null)}
+                >
+                  <MaterialCommunityIcons name="close" size={20} color="#fff" />
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.photoButtons}>
+                <Pressable
+                  style={[styles.photoButton, { backgroundColor: theme.primary }]}
+                  onPress={pickImageFromCamera}
+                >
+                  <MaterialCommunityIcons name="camera" size={24} color="#fff" />
+                  <Text style={styles.photoButtonText}>Κάμερα</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.photoButton, { backgroundColor: theme.info }]}
+                  onPress={pickImageFromGallery}
+                >
+                  <MaterialCommunityIcons name="image" size={24} color="#fff" />
+                  <Text style={styles.photoButtonText}>Συλλογή</Text>
+                </Pressable>
+              </View>
+            )}
+
+            <Pressable
+              style={[
+                styles.submitButton,
+                { 
+                  backgroundColor: theme.success, 
+                  opacity: completeVoucherMutation.isPending ? 0.6 : 1 
+                },
+              ]}
+              onPress={handleSubmitVoucher}
+              disabled={completeVoucherMutation.isPending}
+            >
+              {completeVoucherMutation.isPending ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="check" size={20} color="#fff" />
+                  <Text style={styles.submitButtonText}>
+                    {proofPhoto ? "Υποβολή με Φωτογραφία" : "Υποβολή Χωρίς Φωτογραφία"}
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -574,5 +736,87 @@ const styles = StyleSheet.create({
   historyMeta: {
     flexDirection: "row",
     flexWrap: "wrap",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    gap: Spacing.md,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  photoButtons: {
+    flexDirection: "row",
+    gap: Spacing.md,
+  },
+  photoButton: {
+    flex: 1,
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+  },
+  photoButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  photoPreviewContainer: {
+    position: "relative",
+    alignItems: "center",
+  },
+  photoPreview: {
+    width: "100%",
+    height: 200,
+    borderRadius: BorderRadius.md,
+  },
+  removePhotoButton: {
+    position: "absolute",
+    top: Spacing.sm,
+    right: Spacing.sm,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  submitButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  submitButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  webNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    marginBottom: Spacing.md,
+  },
+  webNoticeText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "500",
   },
 });
