@@ -6,6 +6,7 @@ import { useNavigation } from "@react-navigation/native";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
 import { AppIcon } from "@/components/AppIcon";
+import { Image } from "expo-image";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -186,6 +187,14 @@ export default function LoginScreen() {
           </View>
         </View>
       </KeyboardAwareScrollViewCompat>
+      
+      <View style={[styles.groupLogoContainer, { bottom: insets.bottom + Spacing.lg }]}>
+        <Image
+          source={require("../../assets/images/group-logo.png")}
+          style={styles.groupLogo}
+          contentFit="contain"
+        />
+      </View>
     </ThemedView>
   );
 }
@@ -225,5 +234,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: Spacing.lg,
+  },
+  groupLogoContainer: {
+    position: "absolute",
+    left: Spacing.lg,
+  },
+  groupLogo: {
+    width: 80,
+    height: 80,
   },
 });
