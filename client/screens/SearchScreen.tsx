@@ -35,6 +35,7 @@ export default function SearchScreen() {
   const authFetch = useAuthenticatedFetch();
 
   const [departmentId, setDepartmentId] = useState("");
+  const [centerId, setCenterId] = useState("");
   const [candidateCount, setCandidateCount] = useState("");
   const [courseEndDate, setCourseEndDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -70,6 +71,7 @@ export default function SearchScreen() {
         method: "POST",
         body: JSON.stringify({
           departmentId,
+          centerId: centerId || undefined,
           candidateCount: count,
           courseEndDate: courseEndDate.toISOString().split("T")[0],
           preferredShift,
@@ -78,6 +80,7 @@ export default function SearchScreen() {
 
       navigation.navigate("AvailableSlots", {
         departmentId,
+        centerId: centerId || undefined,
         candidateCount: count,
         courseEndDate: courseEndDate.toISOString().split("T")[0],
         preferredShift,
@@ -123,6 +126,14 @@ export default function SearchScreen() {
             value={departmentId}
             onChangeText={setDepartmentId}
             placeholder="π.χ. 75006"
+            keyboardType="numeric"
+          />
+
+          <TextInput
+            label="Κωδικός Κέντρου"
+            value={centerId}
+            onChangeText={setCenterId}
+            placeholder="π.χ. 0454 (προαιρετικό)"
             keyboardType="numeric"
           />
 

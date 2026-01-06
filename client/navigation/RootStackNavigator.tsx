@@ -20,6 +20,7 @@ export type RootStackParamList = {
   AdminMain: undefined;
   AvailableSlots: {
     departmentId: string;
+    centerId?: string;
     candidateCount: number;
     courseEndDate: string;
     preferredShift: string;

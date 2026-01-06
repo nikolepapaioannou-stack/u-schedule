@@ -63,7 +63,7 @@ export default function AvailableSlotsScreen() {
   const route = useRoute<RoutePropType>();
   const authFetch = useAuthenticatedFetch();
 
-  const { departmentId, candidateCount, courseEndDate, preferredShift } = route.params;
+  const { departmentId, centerId, candidateCount, courseEndDate, preferredShift } = route.params;
 
   const [slots, setSlots] = useState<Slot[]>([]);
   const [unavailableDates, setUnavailableDates] = useState<UnavailableDate[]>([]);
@@ -83,7 +83,7 @@ export default function AvailableSlotsScreen() {
     try {
       const result = await authFetch("/api/slots/search", {
         method: "POST",
-        body: JSON.stringify({ departmentId, candidateCount, courseEndDate, preferredShift }),
+        body: JSON.stringify({ departmentId, centerId, candidateCount, courseEndDate, preferredShift }),
       });
       setSlots(result.slots);
       setUnavailableDates(result.unavailableDates || []);
@@ -104,6 +104,7 @@ export default function AvailableSlotsScreen() {
         method: "POST",
         body: JSON.stringify({
           departmentId,
+          centerId,
           candidateCount,
           courseEndDate,
           preferredShift,
