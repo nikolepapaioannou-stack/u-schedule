@@ -2223,6 +2223,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Search bookings by confirmation number, department ID, or center ID (admin only)
   app.get("/api/admin/bookings/search", async (req, res) => {
+    // Prevent caching of search results
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    
     const userId = await requireAdmin(req, res);
     if (!userId) return;
     
