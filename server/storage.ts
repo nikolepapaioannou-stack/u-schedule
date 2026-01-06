@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, not, or, isNull, desc } from "drizzle-orm";
+import { eq, and, gte, lte, not, or, isNull, desc, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import {
@@ -733,14 +733,14 @@ export class DatabaseStorage implements IStorage {
   async getBookingsByDepartmentId(departmentId: string): Promise<Booking[]> {
     return db.select()
       .from(bookings)
-      .where(eq(bookings.departmentId, departmentId))
+      .where(like(bookings.departmentId, `%${departmentId}%`))
       .orderBy(desc(bookings.createdAt));
   }
 
   async getBookingsByCenterId(centerId: string): Promise<Booking[]> {
     return db.select()
       .from(bookings)
-      .where(eq(bookings.centerId, centerId))
+      .where(like(bookings.centerId, `%${centerId}%`))
       .orderBy(desc(bookings.createdAt));
   }
 }
