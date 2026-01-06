@@ -86,6 +86,7 @@ export const bookings = pgTable("bookings", {
     .primaryKey()
     .default(sql`gen_random_uuid()`),
   departmentId: text("department_id").notNull(),
+  centerId: text("center_id"),
   userId: varchar("user_id").notNull().references(() => users.id),
   candidateCount: integer("candidate_count").notNull(),
   courseEndDate: date("course_end_date").notNull(),
@@ -226,6 +227,7 @@ export const insertClosedDateSchema = createInsertSchema(closedDates).pick({
 
 export const insertBookingSchema = createInsertSchema(bookings).pick({
   departmentId: true,
+  centerId: true,
   candidateCount: true,
   courseEndDate: true,
   preferredShift: true,
@@ -239,6 +241,7 @@ export const insertBookingSchema = createInsertSchema(bookings).pick({
 
 export const searchSlotsSchema = z.object({
   departmentId: z.string().min(1),
+  centerId: z.string().optional(),
   candidateCount: z.number().min(1).max(50),
   courseEndDate: z.string(),
   preferredShift: z.enum(["morning", "midday", "afternoon"]),
