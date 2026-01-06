@@ -124,8 +124,11 @@ export default function AdminDashboardScreen() {
     setIsSearching(true);
     setSearchResults(null);
     try {
-      // Use /find endpoint (renamed from /search to bypass cached responses)
-      const result = await authFetch(`/api/admin/bookings/find?query=${encodeURIComponent(trimmedQuery)}&type=${searchType}`);
+      // Use POST to avoid proxy caching issues
+      const result = await authFetch('/api/admin/bookings/search', {
+        method: 'POST',
+        body: JSON.stringify({ query: trimmedQuery, type: searchType }),
+      });
       
       // Check if we got multiple results
       if (result && result.bookings && Array.isArray(result.bookings)) {

@@ -2222,18 +2222,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Search bookings by confirmation number, department ID, or center ID (admin only)
-  // Using /find endpoint to bypass cached responses from old /search endpoint
-  app.get("/api/admin/bookings/find", async (req, res) => {
-    // Prevent caching of search results
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-    
+  // Using POST to avoid proxy caching issues
+  app.post("/api/admin/bookings/search", async (req, res) => {
     const userId = await requireAdmin(req, res);
     if (!userId) return;
     
     try {
-      const { query, type } = req.query;
+      const { query, type } = req.body;
       
       if (!query || typeof query !== 'string') {
         return res.status(400).json({ error: "Απαιτείται κριτήριο αναζήτησης" });
