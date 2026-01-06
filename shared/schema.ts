@@ -111,6 +111,7 @@ export const bookings = pgTable("bookings", {
   externalActionWarningSentAt: timestamp("external_action_warning_sent_at"),
   externalActionDeadlineWarningSentAt: timestamp("external_action_deadline_warning_sent_at"),
   externalActionCancelledAt: timestamp("external_action_cancelled_at"),
+  externalActionProofPhotoUrl: text("external_action_proof_photo_url"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
