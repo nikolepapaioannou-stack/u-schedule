@@ -188,12 +188,23 @@ export default function LoginScreen() {
         </View>
       </KeyboardAwareScrollViewCompat>
       
-      <View style={[styles.groupLogoContainer, { bottom: insets.bottom + Spacing.lg }]}>
+      <View style={[styles.footerContainer, { bottom: insets.bottom + Spacing.md }]}>
         <Image
           source={require("../../assets/images/group-logo.png")}
           style={styles.groupLogo}
           contentFit="contain"
         />
+        <View style={styles.footerTextContainer}>
+          <ThemedText type="small" style={styles.footerText}>
+            UCERT© 2026 All Rights Reserved.
+          </ThemedText>
+          <ThemedText type="small" style={styles.footerText}>
+            Ακαδημίας 98-100, 106 77, Αθήνα
+          </ThemedText>
+          <ThemedText type="small" style={styles.footerText}>
+            Τηλ: (+30) 210 71 01 410
+          </ThemedText>
+        </View>
       </View>
     </ThemedView>
   );
@@ -235,12 +246,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: Spacing.lg,
   },
-  groupLogoContainer: {
+  footerContainer: {
     position: "absolute",
     left: Spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
   },
   groupLogo: {
-    width: 80,
-    height: 80,
+    width: 60,
+    height: 60,
+  },
+  footerTextContainer: {
+    gap: 2,
+  },
+  footerText: {
+    fontSize: 10,
+    opacity: 0.7,
   },
 });
