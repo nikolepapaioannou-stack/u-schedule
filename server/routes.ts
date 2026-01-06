@@ -2001,6 +2001,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const { id } = req.params;
+      const { proofPhotoBase64 } = req.body || {};
       const booking = await storage.getBooking(id);
       
       if (!booking) {
@@ -2015,12 +2016,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Η κράτηση δεν είναι εγκεκριμένη" });
       }
       
-      const updated = await storage.markExternalActionUserCompleted(id);
+      const updated = await storage.markExternalActionUserCompleted(id, proofPhotoBase64 || null);
       
+      const hasPhoto = proofPhotoBase64 ? " (με φωτογραφία απόδειξης)" : "";
       await storage.addBookingHistory({
         bookingId: id,
         eventType: "voucher_user_completed",
-        description: "Ο χρήστης δήλωσε ολοκλήρωση ανάρτησης voucher",
+        description: `Ο χρήστης δήλωσε ολοκλήρωση ανάρτησης voucher${hasPhoto}`,
         performedBy: userId,
       });
       

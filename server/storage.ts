@@ -581,13 +581,19 @@ export class DatabaseStorage implements IStorage {
     ).orderBy(bookings.bookingDate);
   }
 
-  async markExternalActionUserCompleted(bookingId: string): Promise<Booking | undefined> {
+  async markExternalActionUserCompleted(bookingId: string, proofPhotoBase64: string | null = null): Promise<Booking | undefined> {
+    const updateData: Record<string, any> = { 
+      externalActionStatus: "user_completed",
+      externalActionCompletedAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    if (proofPhotoBase64) {
+      updateData.externalActionProofPhotoUrl = proofPhotoBase64;
+    }
+    
     const result = await db.update(bookings)
-      .set({ 
-        externalActionStatus: "user_completed",
-        externalActionCompletedAt: new Date(),
-        updatedAt: new Date()
-      })
+      .set(updateData)
       .where(eq(bookings.id, bookingId))
       .returning();
     return result[0];
