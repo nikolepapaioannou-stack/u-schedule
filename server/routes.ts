@@ -2070,7 +2070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: booking.userId,
         type: 'action_verified',
         title: 'Επιβεβαίωση ανάρτησης Voucher',
-        message: `Η ανάρτηση των κωδικών επιταγής για το τμήμα ${booking.departmentId} (${formattedDate}) επιβεβαιώθηκε επιτυχώς. Η εξέταση θα διεξαχθεί κανονικά.`,
+        message: `Η ανάρτηση των κωδικών επιταγής πιστοποίησης για το τμήμα ${booking.departmentId} (${formattedDate}) επιβεβαιώθηκε επιτυχώς. Η εξέταση θα διεξαχθεί κανονικά.`,
         bookingId: id,
       });
       
@@ -2122,7 +2122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: booking.userId,
         type: 'action_rejected',
         title: 'Απόρριψη ανάρτησης Voucher',
-        message: `Η ανάρτηση κωδικών επιταγής για το τμήμα ${booking.departmentId} (${formattedDate}) απορρίφθηκε. ${reason ? `Λόγος: ${reason}` : 'Παρακαλώ αναρτήστε ξανά τους κωδικούς.'}`,
+        message: `Η ανάρτηση κωδικών επιταγής πιστοποίησης για το τμήμα ${booking.departmentId} (${formattedDate}) απορρίφθηκε. ${reason ? `Λόγος: ${reason}` : 'Παρακαλώ αναρτήστε ξανά τους κωδικούς.'}`,
         bookingId: id,
       });
       
@@ -2172,7 +2172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: booking.userId,
         type: 'action_verified',
         title: 'Ολοκλήρωση ανάρτησης Voucher',
-        message: `Η ανάρτηση των κωδικών επιταγής για το τμήμα ${booking.departmentId} (${formattedDate}) ολοκληρώθηκε. Η εξέταση θα διεξαχθεί κανονικά.`,
+        message: `Η ανάρτηση των κωδικών επιταγής πιστοποίησης για το τμήμα ${booking.departmentId} (${formattedDate}) ολοκληρώθηκε. Η εξέταση θα διεξαχθεί κανονικά.`,
         bookingId: id,
       });
       
@@ -2220,7 +2220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: booking.userId,
         type: 'action_reminder',
         title: 'Υπενθύμιση: Εκκρεμεί ανάρτηση Voucher',
-        message: `Υπενθυμίζουμε ότι για το τμήμα ${booking.departmentId} (εξέταση ${formattedDate}, σε ${daysUntil} ημέρες) εκκρεμεί η ανάρτηση των κωδικών επιταγής. Παρακαλούμε ολοκληρώστε την ενέργεια το συντομότερο.`,
+        message: `Υπενθυμίζουμε ότι για το τμήμα ${booking.departmentId} (εξέταση ${formattedDate}, σε ${daysUntil} ημέρες) εκκρεμεί η ανάρτηση των κωδικών επιταγής πιστοποίησης. Παρακαλούμε ολοκληρώστε την ενέργεια το συντομότερο.`,
         bookingId: id,
       });
       

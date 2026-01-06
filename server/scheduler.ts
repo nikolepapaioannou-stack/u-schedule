@@ -56,7 +56,7 @@ async function sendDailyAdminReminder() {
       userId: admin.id,
       type: 'admin_reminder',
       title: 'Υπενθύμιση ανάρτησης Voucher',
-      message: `Υπάρχουν ${bookings.length} εξετάσεις προγραμματισμένες για ${getGreekDateString(targetDateStr)} που απαιτούν ανάρτηση κωδικών επιταγής. Τμήματα: ${departmentList}. Παρακαλώ ελέγξτε αν έχουν αναρτηθεί οι κωδικοί.`,
+      message: `Υπάρχουν ${bookings.length} εξετάσεις προγραμματισμένες για ${getGreekDateString(targetDateStr)} που απαιτούν ανάρτηση κωδικών επιταγής πιστοποίησης. Τμήματα: ${departmentList}. Παρακαλώ ελέγξτε αν έχουν αναρτηθεί οι κωδικοί.`,
       bookingId: bookings[0]?.id,
     });
     console.log(`[Scheduler] Sent reminder to admin ${admin.email}`);
