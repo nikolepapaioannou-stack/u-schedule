@@ -1,0 +1,50 @@
+PS C:\U-Schedule\u-schedule> cd C:\U-Schedule\u-schedule
+>> git pull origin main
+remote: Enumerating objects: 80, done.
+remote: Counting objects: 100% (80/80), done.
+remote: Compressing objects: 100% (16/16), done.
+remote: Total 74 (delta 58), reused 73 (delta 57), pack-reused 0 (from 0)
+Unpacking objects: 100% (74/74), 1.09 MiB | 1.46 MiB/s, done.
+From https://github.com/nikolepapaioannou-stack/u-schedule
+ * branch            main       -> FETCH_HEAD
+   0116edf..e1dd3ff  main       -> origin/main
+Updating 0116edf..e1dd3ff
+Fast-forward
+ .replit                                            |    1 +
+ assets/images/u-icon.png                           |  Bin 3638 -> 6969 bytes
+ ...ngs-IDE-e-g-Android-Studio-us_1767732866284.txt |   65 +
+ ...ore-main-debug-x86-Compiler-e_1767732992095.txt |    4 +
+ ...10-0-26100-7462-c-Microsoft-C_1767728459499.txt |   49 +
+ ...re-main-debug-x86-Compiler-ex_1767732292936.txt |    3 +
+ ...re-main-debug-x86-Compiler-ex_1767732534315.txt |    3 +
+ ...ht-C-Microsoft-Corporation-Al_1767732636049.txt |   75 ++
+ ...ht-C-Microsoft-Corporation-Al_1767732749934.txt |  660 ++++++++++
+ attached_assets/image_1767728979791.png            |  Bin 0 -> 109615 bytes
+ attached_assets/image_1767730241743.png            |  Bin 0 -> 168271 bytes
+ attached_assets/image_1767732086047.png            |  Bin 0 -> 177317 bytes
+ attached_assets/image_1767734472951.png            |  Bin 0 -> 149406 bytes
+ attached_assets/image_1767734527042.png            |  Bin 0 -> 32693 bytes
+ attached_assets/image_1767735031365.png            |  Bin 0 -> 176700 bytes
+ attached_assets/image_1767735136737.png            |  Bin 0 -> 121147 bytes
+ attached_assets/image_1767735342539.png            |  Bin 0 -> 322021 bytes
+ attached_assets/image_1767736218900.png            |  Bin 0 -> 49909 bytes
+ .../manifest-merger-debug-report_1767730025737.txt | 1310 ++++++++++++++++++++
+ 19 files changed, 2170 insertions(+)
+ create mode 100644 attached_assets/Pasted--Project-wide-Gradle-settings-IDE-e-g-Android-Studio-us_1767732866284.txt
+ create mode 100644 attached_assets/Pasted--U-Schedule-expo-modules-core-main-debug-x86-Compiler-e_1767732992095.txt
+ create mode 100644 attached_assets/Pasted-Microsoft-Windows-Version-10-0-26100-7462-c-Microsoft-C_1767728459499.txt
+ create mode 100644 attached_assets/Pasted-U-Schedule-expo-modules-core-main-debug-x86-Compiler-ex_1767732292936.txt
+ create mode 100644 attached_assets/Pasted-U-Schedule-expo-modules-core-main-debug-x86-Compiler-ex_1767732534315.txt
+ create mode 100644 attached_assets/Pasted-Windows-PowerShell-Copyright-C-Microsoft-Corporation-Al_1767732636049.txt
+ create mode 100644 attached_assets/Pasted-Windows-PowerShell-Copyright-C-Microsoft-Corporation-Al_1767732749934.txt
+ create mode 100644 attached_assets/image_1767728979791.png
+ create mode 100644 attached_assets/image_1767730241743.png
+ create mode 100644 attached_assets/image_1767732086047.png
+ create mode 100644 attached_assets/image_1767734472951.png
+ create mode 100644 attached_assets/image_1767734527042.png
+ create mode 100644 attached_assets/image_1767735031365.png
+ create mode 100644 attached_assets/image_1767735136737.png
+ create mode 100644 attached_assets/image_1767735342539.png
+ create mode 100644 attached_assets/image_1767736218900.png
+ create mode 100644 attached_assets/manifest-merger-debug-report_1767730025737.txt
+PS C:\U-Schedule\u-schedule>
