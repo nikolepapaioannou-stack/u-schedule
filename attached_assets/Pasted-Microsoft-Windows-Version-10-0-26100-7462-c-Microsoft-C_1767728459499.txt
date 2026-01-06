@@ -1,0 +1,49 @@
+Microsoft Windows [Version 10.0.26100.7462]
+(c) Microsoft Corporation. All rights reserved.
+
+C:\Users\emman>cd Desktop
+The system cannot find the path specified.
+
+C:\Users\emman>cd Download
+The system cannot find the path specified.
+
+C:\Users\emman>cd C:\U-Schedule
+
+C:\U-Schedule>git clone https://github.com/nikolepapaioannou-stack/u-schedule.git
+Cloning into 'u-schedule'...
+remote: Enumerating objects: 1012, done.
+remote: Counting objects: 100% (1012/1012), done.
+remote: Compressing objects: 100% (196/196), done.
+remote: Total 1012 (delta 777), reused 1007 (delta 772), pack-reused 0 (from 0)
+Receiving objects: 100% (1012/1012), 7.80 MiB | 6.67 MiB/s, done.
+Resolving deltas: 100% (777/777), done.
+
+C:\U-Schedule>cd u-schedule
+
+C:\U-Schedule\u-schedule>npm install
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+
+added 1055 packages, and audited 1056 packages in 35s
+
+193 packages are looking for funding
+  run `npm fund` for details
+
+6 vulnerabilities (4 moderate, 2 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues possible (including breaking changes), run:
+  npm audit fix --force
+
+Some issues need review, and may require choosing
+a different dependency.
+
+Run `npm audit` for details.
