@@ -124,9 +124,8 @@ export default function AdminDashboardScreen() {
     setIsSearching(true);
     setSearchResults(null);
     try {
-      // Add cache-busting timestamp to prevent stale cached responses
-      const cacheBuster = Date.now();
-      const result = await authFetch(`/api/admin/bookings/search?query=${encodeURIComponent(trimmedQuery)}&type=${searchType}&_t=${cacheBuster}`);
+      // Use /find endpoint (renamed from /search to bypass cached responses)
+      const result = await authFetch(`/api/admin/bookings/find?query=${encodeURIComponent(trimmedQuery)}&type=${searchType}`);
       
       // Check if we got multiple results
       if (result && result.bookings && Array.isArray(result.bookings)) {
