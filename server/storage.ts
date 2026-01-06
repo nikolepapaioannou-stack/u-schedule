@@ -803,4 +803,19 @@ export async function initializeDefaultData() {
   }
   
   await storage.getSettings();
+  
+  const superadminEmail = "nikolaki001@gmail.com";
+  const existingSuperadmin = await storage.getUserByEmail(superadminEmail);
+  if (!existingSuperadmin) {
+    const { createHash } = await import("crypto");
+    const hashedPassword = createHash("sha256").update("Admin123!").digest("hex");
+    await storage.createUserWithRole({
+      email: superadminEmail,
+      password: hashedPassword,
+      ugrId: "SUPERADMIN001",
+      role: "superadmin",
+      isAdmin: true,
+    });
+    console.log("[Init] Superadmin created:", superadminEmail);
+  }
 }
