@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, not, or, isNull, desc, like } from "drizzle-orm";
+import { eq, and, gte, lte, not, or, isNull, desc, like, inArray, max } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import {
@@ -114,6 +114,7 @@ export interface IStorage {
   getBookingByConfirmationNumber(confirmationNumber: string): Promise<Booking | undefined>;
   getBookingsByDepartmentId(departmentId: string): Promise<Booking[]>;
   getBookingsByCenterId(centerId: string): Promise<Booking[]>;
+  getLastReminderSentForBookings(bookingIds: string[]): Promise<Map<string, Date>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -742,6 +743,31 @@ export class DatabaseStorage implements IStorage {
       .from(bookings)
       .where(like(bookings.centerId, `%${centerId}%`))
       .orderBy(desc(bookings.createdAt));
+  }
+
+  async getLastReminderSentForBookings(bookingIds: string[]): Promise<Map<string, Date>> {
+    if (bookingIds.length === 0) return new Map();
+    
+    const reminders = await db.select({
+      bookingId: bookingHistory.bookingId,
+      createdAt: bookingHistory.createdAt,
+    })
+      .from(bookingHistory)
+      .where(
+        and(
+          inArray(bookingHistory.bookingId, bookingIds),
+          eq(bookingHistory.eventType, "voucher_reminder_sent")
+        )
+      )
+      .orderBy(desc(bookingHistory.createdAt));
+    
+    const result = new Map<string, Date>();
+    for (const reminder of reminders) {
+      if (!result.has(reminder.bookingId)) {
+        result.set(reminder.bookingId, reminder.createdAt);
+      }
+    }
+    return result;
   }
 }
 

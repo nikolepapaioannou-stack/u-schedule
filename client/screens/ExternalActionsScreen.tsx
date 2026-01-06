@@ -45,6 +45,10 @@ import { AppIcon } from "@/components/AppIcon";
 import { Spacing } from "@/constants/theme";
 import type { Booking } from "@shared/schema";
 
+type BookingWithReminder = Booking & {
+  lastReminderSent?: string | null;
+};
+
 type FilterTab = "pending" | "verification" | "all";
 
 function getDaysUntil(dateStr: string): number {
@@ -63,6 +67,16 @@ function getGreekDate(dateStr: string): string {
     weekday: "short",
     day: "numeric",
     month: "short",
+  });
+}
+
+function getGreekDateTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("el-GR", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -102,12 +116,12 @@ export default function ExternalActionsScreen() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<FilterTab>("verification");
 
-  const { data: pendingActions = [], isLoading: loadingPending, refetch: refetchPending } = useQuery<Booking[]>({
+  const { data: pendingActions = [], isLoading: loadingPending, refetch: refetchPending } = useQuery<BookingWithReminder[]>({
     queryKey: ["/api/external-actions/pending"],
     queryFn: () => authFetch("/api/external-actions/pending"),
   });
 
-  const { data: pendingVerification = [], isLoading: loadingVerification, refetch: refetchVerification } = useQuery<Booking[]>({
+  const { data: pendingVerification = [], isLoading: loadingVerification, refetch: refetchVerification } = useQuery<BookingWithReminder[]>({
     queryKey: ["/api/external-actions/pending-verification"],
     queryFn: () => authFetch("/api/external-actions/pending-verification"),
   });
@@ -152,6 +166,8 @@ export default function ExternalActionsScreen() {
         method: "POST",
       }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/external-actions/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-actions/pending-verification"] });
       if (Platform.OS === "web") {
         window.alert("Η υπενθύμιση στάλθηκε επιτυχώς");
       } else {
@@ -199,7 +215,7 @@ export default function ExternalActionsScreen() {
     );
   };
 
-  const getFilteredData = (): Booking[] => {
+  const getFilteredData = (): BookingWithReminder[] => {
     switch (activeTab) {
       case "verification":
         return pendingVerification;
@@ -216,10 +232,11 @@ export default function ExternalActionsScreen() {
   const filteredData = getFilteredData();
   const isLoading = loadingPending || loadingVerification;
 
-  const renderBookingCard = (booking: Booking) => {
+  const renderBookingCard = (booking: BookingWithReminder) => {
     const daysUntil = getDaysUntil(booking.bookingDate);
     const isUrgent = daysUntil <= 2;
     const isPendingVerification = booking.externalActionStatus === "user_completed";
+    const hasReminderSent = !!booking.lastReminderSent;
 
     return (
       <Card key={booking.id} style={styles.card}>
@@ -269,6 +286,14 @@ export default function ExternalActionsScreen() {
             <AppIcon name="account-group-outline" size={16} color={theme.textSecondary} />
             <ThemedText style={styles.detailText}>{booking.candidateCount} υποψήφιοι</ThemedText>
           </View>
+          {hasReminderSent && booking.lastReminderSent ? (
+            <View style={styles.detailRow}>
+              <AppIcon name="check-circle-outline" size={16} color={theme.success} />
+              <Text style={[styles.detailText, { color: theme.success }]}>
+                Υπενθύμιση: {getGreekDateTime(booking.lastReminderSent)}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {isPendingVerification ? (
@@ -293,12 +318,12 @@ export default function ExternalActionsScreen() {
         ) : (
           <View style={styles.actionButtons}>
             <Pressable
-              style={[styles.actionButton, { backgroundColor: theme.warning, opacity: isActionPending ? 0.6 : 1 }]}
+              style={[styles.actionButton, { backgroundColor: hasReminderSent ? theme.textSecondary : theme.warning, opacity: isActionPending ? 0.6 : 1 }]}
               onPress={() => handleSendReminder(booking.id)}
               disabled={isActionPending}
             >
               <AppIcon name="bell-outline" size={18} color="#fff" />
-              <Text style={styles.actionButtonText}>Υπενθύμιση</Text>
+              <Text style={styles.actionButtonText}>{hasReminderSent ? "Επανα-υπενθύμιση" : "Υπενθύμιση"}</Text>
             </Pressable>
             <Pressable
               style={[styles.actionButton, { backgroundColor: theme.primary, opacity: isActionPending ? 0.6 : 1 }]}

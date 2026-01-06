@@ -1957,7 +1957,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const bookings = await storage.getBookingsWithPendingActions();
-      res.json(bookings);
+      const bookingIds = bookings.map(b => b.id);
+      const reminderMap = await storage.getLastReminderSentForBookings(bookingIds);
+      
+      const bookingsWithReminders = bookings.map(b => ({
+        ...b,
+        lastReminderSent: reminderMap.get(b.id)?.toISOString() || null,
+      }));
+      
+      res.json(bookingsWithReminders);
     } catch (error) {
       console.error("Error fetching pending actions:", error);
       res.status(500).json({ error: "Σφάλμα κατά την ανάκτηση εκκρεμοτήτων" });
@@ -1971,7 +1979,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const bookings = await storage.getBookingsPendingVerification();
-      res.json(bookings);
+      const bookingIds = bookings.map(b => b.id);
+      const reminderMap = await storage.getLastReminderSentForBookings(bookingIds);
+      
+      const bookingsWithReminders = bookings.map(b => ({
+        ...b,
+        lastReminderSent: reminderMap.get(b.id)?.toISOString() || null,
+      }));
+      
+      res.json(bookingsWithReminders);
     } catch (error) {
       console.error("Error fetching pending verification:", error);
       res.status(500).json({ error: "Σφάλμα κατά την ανάκτηση προς επαλήθευση" });
