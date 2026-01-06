@@ -16,11 +16,20 @@ import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+interface DailyCandidateData {
+  date: string;
+  candidates: number;
+  exams: number;
+}
+
 interface DashboardStats {
   todayBookings: number;
   pendingApprovals: number;
   weekBookings: number;
   totalApproved: number;
+  todayCandidates: number;
+  weekCandidates: number;
+  dailyCandidates: DailyCandidateData[];
 }
 
 interface RecentBooking {
@@ -51,6 +60,9 @@ export default function AdminDashboardScreen() {
     pendingApprovals: 0,
     weekBookings: 0,
     totalApproved: 0,
+    todayCandidates: 0,
+    weekCandidates: 0,
+    dailyCandidates: [],
   });
   const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,6 +88,9 @@ export default function AdminDashboardScreen() {
           pendingApprovals: statsData.pendingApprovals,
           weekBookings: statsData.weekBookings,
           totalApproved: statsData.totalApproved,
+          todayCandidates: statsData.todayCandidates || 0,
+          weekCandidates: statsData.weekCandidates || 0,
+          dailyCandidates: statsData.dailyCandidates || [],
         });
       } else {
         const today = new Date().toISOString().split("T")[0];
@@ -86,12 +101,30 @@ export default function AdminDashboardScreen() {
         const weekStartStr = weekStart.toISOString().split("T")[0];
         const weekEndStr = weekEnd.toISOString().split("T")[0];
 
-        const todayBookings = allBookings.filter((b: any) => b.bookingDate === today && b.status === "approved").length;
+        const todayApproved = allBookings.filter((b: any) => b.bookingDate === today && b.status === "approved");
+        const todayBookings = todayApproved.length;
+        const todayCandidates = todayApproved.reduce((sum: number, b: any) => sum + (b.candidateCount || 0), 0);
         const pendingApprovals = allBookings.filter((b: any) => b.status === "pending").length;
-        const weekBookings = allBookings.filter((b: any) => b.bookingDate >= weekStartStr && b.bookingDate <= weekEndStr && b.status === "approved").length;
+        const weekApproved = allBookings.filter((b: any) => b.bookingDate >= weekStartStr && b.bookingDate <= weekEndStr && b.status === "approved");
+        const weekBookings = weekApproved.length;
+        const weekCandidates = weekApproved.reduce((sum: number, b: any) => sum + (b.candidateCount || 0), 0);
         const totalApproved = allBookings.filter((b: any) => b.status === "approved").length;
 
-        setStats({ todayBookings, pendingApprovals, weekBookings, totalApproved });
+        // Build daily breakdown
+        const dailyCandidates: DailyCandidateData[] = [];
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(weekStart);
+          d.setDate(d.getDate() + i);
+          const dateStr = d.toISOString().split("T")[0];
+          const dayBookings = allBookings.filter((b: any) => b.bookingDate === dateStr && b.status === "approved");
+          dailyCandidates.push({
+            date: dateStr,
+            candidates: dayBookings.reduce((sum: number, b: any) => sum + (b.candidateCount || 0), 0),
+            exams: dayBookings.length,
+          });
+        }
+
+        setStats({ todayBookings, pendingApprovals, weekBookings, totalApproved, todayCandidates, weekCandidates, dailyCandidates });
       }
       
       const recent = allBookings
@@ -221,6 +254,12 @@ export default function AdminDashboardScreen() {
     );
   };
 
+  const formatDayName = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const days = ['Κυρ', 'Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ'];
+    return days[date.getDay()];
+  };
+
   const ListHeader = useMemo(() => (
     <View style={styles.header}>
       <View style={styles.statsGrid}>
@@ -229,6 +268,50 @@ export default function AdminDashboardScreen() {
         <StatCard icon="trending-up" label="Εβδομάδα" value={stats.weekBookings} color={theme.secondary} />
         <StatCard icon="check-circle" label="Εγκεκριμένες" value={stats.totalApproved} color={theme.success} />
       </View>
+
+      <Card elevation={1} style={styles.candidatesCard}>
+        <View style={styles.candidatesHeader}>
+          <MaterialCommunityIcons name="account-group" size={20} color={theme.info} />
+          <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>Υποψήφιοι</ThemedText>
+        </View>
+        <View style={styles.candidatesSummary}>
+          <View style={styles.candidateStat}>
+            <ThemedText type="hero" style={{ color: theme.primary }}>{stats.todayCandidates}</ThemedText>
+            <ThemedText type="small" style={{ color: theme.textSecondary }}>Σήμερα</ThemedText>
+          </View>
+          <View style={[styles.candidateDivider, { backgroundColor: theme.border }]} />
+          <View style={styles.candidateStat}>
+            <ThemedText type="hero" style={{ color: theme.secondary }}>{stats.weekCandidates}</ThemedText>
+            <ThemedText type="small" style={{ color: theme.textSecondary }}>Εβδομάδα</ThemedText>
+          </View>
+        </View>
+        {stats.dailyCandidates.length > 0 ? (
+          <View style={styles.dailyBreakdown}>
+            {stats.dailyCandidates.map((day) => {
+              const isToday = day.date === new Date().toISOString().split("T")[0];
+              return (
+                <View 
+                  key={day.date} 
+                  style={[
+                    styles.dailyItem, 
+                    { backgroundColor: isToday ? theme.primary + "15" : theme.backgroundSecondary }
+                  ]}
+                >
+                  <ThemedText type="caption" style={{ color: isToday ? theme.primary : theme.textSecondary, fontWeight: isToday ? "700" : "500" }}>
+                    {formatDayName(day.date)}
+                  </ThemedText>
+                  <ThemedText type="h4" style={{ color: isToday ? theme.primary : theme.text }}>
+                    {day.candidates}
+                  </ThemedText>
+                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                    {day.exams} εξ.
+                  </ThemedText>
+                </View>
+              );
+            })}
+          </View>
+        ) : null}
+      </Card>
 
       <View style={styles.sectionHeader}>
         <ThemedText type="h3">Πρόσφατες Κρατήσεις</ThemedText>
@@ -512,5 +595,38 @@ const styles = StyleSheet.create({
   searchResultInfo: {
     flex: 1,
     gap: 2,
+  },
+  candidatesCard: {
+    marginTop: Spacing.lg,
+    gap: Spacing.md,
+  },
+  candidatesHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  candidatesSummary: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.xl,
+  },
+  candidateStat: {
+    alignItems: "center",
+  },
+  candidateDivider: {
+    width: 1,
+    height: 40,
+  },
+  dailyBreakdown: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: Spacing.sm,
+  },
+  dailyItem: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    marginHorizontal: 2,
   },
 });

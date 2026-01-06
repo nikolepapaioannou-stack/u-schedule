@@ -1289,6 +1289,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const todayBookings = allBookings.filter(b => b.bookingDate === today && b.status === "approved").length;
     const totalApproved = allBookings.filter(b => b.status === "approved").length;
     
+    // Calculate candidate counts
+    const todayCandidates = allBookings
+      .filter(b => b.bookingDate === today && b.status === "approved")
+      .reduce((sum, b) => sum + (b.candidateCount || 0), 0);
+    
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
     const weekEnd = new Date(weekStart);
@@ -1296,15 +1301,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const weekStartStr = weekStart.toISOString().split("T")[0];
     const weekEndStr = weekEnd.toISOString().split("T")[0];
     
-    const weekBookings = allBookings.filter(b => {
+    const weekBookingsArr = allBookings.filter(b => {
       return b.bookingDate >= weekStartStr && b.bookingDate <= weekEndStr && b.status === "approved";
-    }).length;
+    });
+    const weekBookings = weekBookingsArr.length;
+    const weekCandidates = weekBookingsArr.reduce((sum, b) => sum + (b.candidateCount || 0), 0);
+    
+    // Daily candidate breakdown for the week
+    const dailyCandidates: { date: string; candidates: number; exams: number }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + i);
+      const dateStr = d.toISOString().split("T")[0];
+      const dayBookings = allBookings.filter(b => b.bookingDate === dateStr && b.status === "approved");
+      dailyCandidates.push({
+        date: dateStr,
+        candidates: dayBookings.reduce((sum, b) => sum + (b.candidateCount || 0), 0),
+        exams: dayBookings.length,
+      });
+    }
     
     res.json({
       todayBookings,
       pendingApprovals,
       weekBookings,
       totalApproved,
+      todayCandidates,
+      weekCandidates,
+      dailyCandidates,
     });
   });
 
