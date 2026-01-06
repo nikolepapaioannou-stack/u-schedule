@@ -57,6 +57,8 @@ export default function AdminDashboardScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [searchType, setSearchType] = useState<'auto' | 'confirmationNumber' | 'departmentId' | 'centerId'>('auto');
+  const [searchResults, setSearchResults] = useState<any[] | null>(null);
   const searchInputRef = useRef<TextInputType>(null);
 
   const fetchDashboardData = useCallback(async () => {
@@ -120,14 +122,27 @@ export default function AdminDashboardScreen() {
     if (!trimmedQuery) return;
     
     setIsSearching(true);
+    setSearchResults(null);
     try {
-      const result = await authFetch(`/api/admin/bookings/search?confirmationNumber=${encodeURIComponent(trimmedQuery)}`);
-      if (result && result.id) {
+      const result = await authFetch(`/api/admin/bookings/search?query=${encodeURIComponent(trimmedQuery)}&type=${searchType}`);
+      
+      // Check if we got multiple results
+      if (result && result.bookings && Array.isArray(result.bookings)) {
+        if (result.bookings.length === 1) {
+          // Single result, navigate directly
+          setSearchQuery("");
+          navigation.navigate("BookingDetails", { bookingId: result.bookings[0].id });
+        } else {
+          // Multiple results, show in list
+          setSearchResults(result.bookings);
+        }
+      } else if (result && result.id) {
+        // Single booking returned
         setSearchQuery("");
         navigation.navigate("BookingDetails", { bookingId: result.id });
       }
     } catch (error: any) {
-      const message = error?.message || "Δεν βρέθηκε κράτηση με αυτόν τον αριθμό";
+      const message = error?.message || "Δεν βρέθηκαν κρατήσεις";
       if (Platform.OS === "web") {
         window.alert(message);
       } else {
@@ -136,6 +151,25 @@ export default function AdminDashboardScreen() {
     } finally {
       setIsSearching(false);
     }
+  };
+  
+  const clearSearchResults = () => {
+    setSearchResults(null);
+    setSearchQuery("");
+  };
+
+  const searchTypeLabels = {
+    auto: 'Αυτόματη',
+    confirmationNumber: 'Αρ. Επιβεβαίωσης',
+    departmentId: 'Κωδ. Τμήματος',
+    centerId: 'Κωδ. Κέντρου',
+  };
+  
+  const searchPlaceholders = {
+    auto: 'Αναζήτηση...',
+    confirmationNumber: 'π.χ. 000001',
+    departmentId: 'π.χ. 75023',
+    centerId: 'π.χ. 0454',
   };
 
   const formatDate = (dateStr: string) => {
@@ -221,6 +255,28 @@ export default function AdminDashboardScreen() {
             <Feather name="search" size={16} color={theme.primary} />
             <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>Αναζήτηση Κράτησης</ThemedText>
           </View>
+          <View style={styles.searchTypeRow}>
+            {(['auto', 'confirmationNumber', 'departmentId', 'centerId'] as const).map((type) => (
+              <Pressable
+                key={type}
+                style={[
+                  styles.searchTypeButton,
+                  { 
+                    backgroundColor: searchType === type ? theme.primary : theme.backgroundSecondary,
+                    borderColor: searchType === type ? theme.primary : theme.border,
+                  }
+                ]}
+                onPress={() => setSearchType(type)}
+              >
+                <ThemedText 
+                  type="caption" 
+                  style={{ color: searchType === type ? '#fff' : theme.text }}
+                >
+                  {searchTypeLabels[type]}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
           <View style={styles.searchRow}>
             <TextInput
               ref={searchInputRef}
@@ -232,7 +288,7 @@ export default function AdminDashboardScreen() {
                   borderColor: theme.border,
                 }
               ]}
-              placeholder="Αριθμός επιβεβαίωσης (π.χ. 000001)"
+              placeholder={searchPlaceholders[searchType]}
               placeholderTextColor={theme.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -257,6 +313,52 @@ export default function AdminDashboardScreen() {
             </Pressable>
           </View>
         </Card>
+        
+        {searchResults && searchResults.length > 0 ? (
+          <Card elevation={1} style={styles.searchResultsCard}>
+            <View style={styles.searchResultsHeader}>
+              <ThemedText type="h4">Αποτελέσματα ({searchResults.length})</ThemedText>
+              <Pressable onPress={clearSearchResults}>
+                <Feather name="x" size={20} color={theme.textSecondary} />
+              </Pressable>
+            </View>
+            {searchResults.map((booking) => {
+              const statusConfig = STATUS_CONFIG[booking.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
+              const statusColor = theme[statusConfig.color as keyof typeof theme] as string;
+              return (
+                <Pressable
+                  key={booking.id}
+                  style={({ pressed }) => [
+                    styles.searchResultItem,
+                    { backgroundColor: pressed ? theme.backgroundSecondary : 'transparent' }
+                  ]}
+                  onPress={() => {
+                    clearSearchResults();
+                    navigation.navigate("BookingDetails", { bookingId: booking.id });
+                  }}
+                >
+                  <View style={styles.searchResultInfo}>
+                    <ThemedText type="body" style={{ fontWeight: '600' }}>
+                      {booking.confirmationNumber ? `#${booking.confirmationNumber}` : 'Χωρίς αριθμό'}
+                    </ThemedText>
+                    <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                      Τμ: {booking.departmentId} {booking.centerId ? `| Κέντρο: ${booking.centerId}` : ''}
+                    </ThemedText>
+                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                      {formatDate(booking.bookingDate)} - {booking.candidateCount} υποψ.
+                    </ThemedText>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: statusColor + "20" }]}>
+                    <MaterialCommunityIcons name={statusConfig.icon as any} size={12} color={statusColor} />
+                    <ThemedText type="caption" style={{ color: statusColor, marginLeft: 4 }}>
+                      {statusConfig.label}
+                    </ThemedText>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </Card>
+        ) : null}
       </View>
       <FlatList
         data={recentBookings}
@@ -374,5 +476,37 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     alignItems: "center",
     justifyContent: "center",
+  },
+  searchTypeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.xs,
+  },
+  searchTypeButton: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  searchResultsCard: {
+    marginTop: Spacing.md,
+  },
+  searchResultsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  searchResultItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+  },
+  searchResultInfo: {
+    flex: 1,
+    gap: 2,
   },
 });
