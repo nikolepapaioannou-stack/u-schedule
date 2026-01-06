@@ -146,7 +146,21 @@ export default function ExternalActionsScreen() {
     },
   });
 
-  const isActionPending = verifyMutation.isPending || rejectMutation.isPending || adminCompleteMutation.isPending;
+  const sendReminderMutation = useMutation({
+    mutationFn: (bookingId: string) =>
+      authFetch(`/api/bookings/${bookingId}/external-action/send-reminder`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      if (Platform.OS === "web") {
+        window.alert("Η υπενθύμιση στάλθηκε επιτυχώς");
+      } else {
+        Alert.alert("Επιτυχία", "Η υπενθύμιση στάλθηκε επιτυχώς");
+      }
+    },
+  });
+
+  const isActionPending = verifyMutation.isPending || rejectMutation.isPending || adminCompleteMutation.isPending || sendReminderMutation.isPending;
 
   const handleVerify = (bookingId: string) => {
     crossPlatformConfirm(
@@ -173,6 +187,15 @@ export default function ExternalActionsScreen() {
       "Θέλετε να σημειώσετε την ενέργεια ως ολοκληρωμένη;",
       () => adminCompleteMutation.mutate(bookingId),
       "Ολοκλήρωση"
+    );
+  };
+
+  const handleSendReminder = (bookingId: string) => {
+    crossPlatformConfirm(
+      "Αποστολή Υπενθύμισης",
+      "Θέλετε να στείλετε υπενθύμιση στον χρήστη για την εκκρεμή ενέργεια;",
+      () => sendReminderMutation.mutate(bookingId),
+      "Αποστολή"
     );
   };
 
@@ -268,14 +291,24 @@ export default function ExternalActionsScreen() {
             </Pressable>
           </View>
         ) : (
-          <Pressable
-            style={[styles.adminCompleteButton, { backgroundColor: theme.primary, opacity: isActionPending ? 0.6 : 1 }]}
-            onPress={() => handleAdminComplete(booking.id)}
-            disabled={isActionPending}
-          >
-            <AppIcon name="check-circle-outline" size={18} color="#fff" />
-            <Text style={styles.actionButtonText}>Ολοκλήρωση</Text>
-          </Pressable>
+          <View style={styles.actionButtons}>
+            <Pressable
+              style={[styles.actionButton, { backgroundColor: theme.warning, opacity: isActionPending ? 0.6 : 1 }]}
+              onPress={() => handleSendReminder(booking.id)}
+              disabled={isActionPending}
+            >
+              <AppIcon name="bell-outline" size={18} color="#fff" />
+              <Text style={styles.actionButtonText}>Υπενθύμιση</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.actionButton, { backgroundColor: theme.primary, opacity: isActionPending ? 0.6 : 1 }]}
+              onPress={() => handleAdminComplete(booking.id)}
+              disabled={isActionPending}
+            >
+              <AppIcon name="check-circle-outline" size={18} color="#fff" />
+              <Text style={styles.actionButtonText}>Ολοκλήρωση</Text>
+            </Pressable>
+          </View>
         )}
       </Card>
     );
@@ -494,13 +527,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: 14,
-  },
-  adminCompleteButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: Spacing.sm,
-    borderRadius: 8,
   },
 });

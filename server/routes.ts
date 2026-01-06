@@ -2183,6 +2183,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Admin sends reminder to user about pending external action
+  app.post("/api/bookings/:id/external-action/send-reminder", async (req, res) => {
+    const adminId = await requireAdmin(req, res);
+    if (!adminId) return;
+    
+    try {
+      const { id } = req.params;
+      const booking = await storage.getBooking(id);
+      
+      if (!booking) {
+        return res.status(404).json({ error: "Η κράτηση δεν βρέθηκε" });
+      }
+      
+      if (booking.status !== "approved") {
+        return res.status(400).json({ error: "Η κράτηση δεν είναι εγκεκριμένη" });
+      }
+      
+      if (booking.externalActionStatus === "verified") {
+        return res.status(400).json({ error: "Η ενέργεια είναι ήδη ολοκληρωμένη" });
+      }
+      
+      if (booking.externalActionStatus === "user_completed") {
+        return res.status(400).json({ error: "Ο χρήστης έχει ήδη δηλώσει ολοκλήρωση" });
+      }
+      
+      const examDate = new Date(booking.bookingDate);
+      const formattedDate = `${String(examDate.getDate()).padStart(2, '0')}/${String(examDate.getMonth() + 1).padStart(2, '0')}/${examDate.getFullYear()}`;
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      examDate.setHours(0, 0, 0, 0);
+      const daysUntil = Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      
+      await storage.createNotification({
+        userId: booking.userId,
+        type: 'action_reminder',
+        title: 'Υπενθύμιση: Εκκρεμεί ανάρτηση Voucher',
+        message: `Υπενθυμίζουμε ότι για το τμήμα ${booking.departmentId} (εξέταση ${formattedDate}, σε ${daysUntil} ημέρες) εκκρεμεί η ανάρτηση των κωδικών επιταγής. Παρακαλούμε ολοκληρώστε την ενέργεια το συντομότερο.`,
+        bookingId: id,
+      });
+      
+      await storage.addBookingHistory({
+        bookingId: id,
+        eventType: "voucher_reminder_sent",
+        description: "Στάλθηκε υπενθύμιση για ανάρτηση voucher",
+        performedBy: adminId,
+      });
+      
+      res.json({ success: true, message: "Η υπενθύμιση στάλθηκε επιτυχώς" });
+    } catch (error) {
+      console.error("Error sending reminder:", error);
+      res.status(500).json({ error: "Σφάλμα κατά την αποστολή υπενθύμισης" });
+    }
+  });
+  
   // Get booking history
   app.get("/api/bookings/:id/history", async (req, res) => {
     const userId = await requireAuth(req, res);
