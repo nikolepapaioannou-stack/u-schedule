@@ -2221,48 +2221,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Search booking by confirmation number (admin only)
+  // Search bookings by confirmation number, department ID, or center ID (admin only)
   app.get("/api/admin/bookings/search", async (req, res) => {
     const userId = await requireAdmin(req, res);
     if (!userId) return;
     
     try {
-      const { confirmationNumber } = req.query;
+      const { query, type } = req.query;
       
-      if (!confirmationNumber || typeof confirmationNumber !== 'string') {
-        return res.status(400).json({ error: "Απαιτείται αριθμός επιβεβαίωσης" });
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ error: "Απαιτείται κριτήριο αναζήτησης" });
       }
       
-      const trimmed = confirmationNumber.trim();
+      const trimmed = query.trim();
       
       if (!trimmed) {
-        return res.status(400).json({ error: "Απαιτείται αριθμός επιβεβαίωσης" });
+        return res.status(400).json({ error: "Απαιτείται κριτήριο αναζήτησης" });
       }
       
-      // Try exact match first (for alphanumeric codes like EXMJGF7776D49A)
-      let booking = await storage.getBookingByConfirmationNumber(trimmed);
+      const searchType = typeof type === 'string' ? type : 'auto';
+      let bookingsResults: any[] = [];
       
-      // If not found and input is numeric, try zero-padded format
-      if (!booking) {
-        const numericOnly = trimmed.replace(/\D/g, '');
-        if (numericOnly && numericOnly.length <= 6) {
-          const normalizedNumber = numericOnly.padStart(6, '0');
-          booking = await storage.getBookingByConfirmationNumber(normalizedNumber);
+      // Helper to enrich bookings with user info
+      async function enrichBookings(bookingsList: any[]) {
+        return Promise.all(bookingsList.map(async (booking) => {
+          const user = await storage.getUser(booking.userId);
+          return {
+            ...booking,
+            userEmail: user?.email,
+            userUgrId: user?.ugrId,
+          };
+        }));
+      }
+      
+      if (searchType === 'centerId') {
+        // Search by center ID - returns multiple bookings
+        const centerBookings = await storage.getBookingsByCenterId(trimmed);
+        bookingsResults = await enrichBookings(centerBookings);
+      } else if (searchType === 'departmentId') {
+        // Search by department ID - returns single or multiple bookings
+        const deptBookings = await storage.getBookingsByDepartmentId(trimmed);
+        bookingsResults = await enrichBookings(deptBookings);
+      } else if (searchType === 'confirmationNumber') {
+        // Search by confirmation number - returns single booking
+        let booking = await storage.getBookingByConfirmationNumber(trimmed);
+        
+        // If not found and input is numeric, try zero-padded format
+        if (!booking) {
+          const numericOnly = trimmed.replace(/\D/g, '');
+          if (numericOnly && numericOnly.length <= 6) {
+            const normalizedNumber = numericOnly.padStart(6, '0');
+            booking = await storage.getBookingByConfirmationNumber(normalizedNumber);
+          }
+        }
+        
+        if (booking) {
+          bookingsResults = await enrichBookings([booking]);
+        }
+      } else {
+        // Auto-detect: try confirmation number first, then department, then center
+        let booking = await storage.getBookingByConfirmationNumber(trimmed);
+        
+        if (!booking) {
+          const numericOnly = trimmed.replace(/\D/g, '');
+          if (numericOnly && numericOnly.length <= 6) {
+            const normalizedNumber = numericOnly.padStart(6, '0');
+            booking = await storage.getBookingByConfirmationNumber(normalizedNumber);
+          }
+        }
+        
+        if (booking) {
+          bookingsResults = await enrichBookings([booking]);
+        } else {
+          // Try department ID
+          const deptBookings = await storage.getBookingsByDepartmentId(trimmed);
+          if (deptBookings.length > 0) {
+            bookingsResults = await enrichBookings(deptBookings);
+          } else {
+            // Try center ID
+            const centerBookings = await storage.getBookingsByCenterId(trimmed);
+            bookingsResults = await enrichBookings(centerBookings);
+          }
         }
       }
       
-      if (!booking) {
-        return res.status(404).json({ error: "Δεν βρέθηκε κράτηση με αυτόν τον αριθμό" });
+      if (bookingsResults.length === 0) {
+        return res.status(404).json({ error: "Δεν βρέθηκαν κρατήσεις" });
       }
       
-      // Get user info
-      const user = await storage.getUser(booking.userId);
-      
-      res.json({
-        ...booking,
-        userEmail: user?.email,
-        userUgrId: user?.ugrId,
-      });
+      // Return array for multiple results, single object for backwards compatibility
+      if (bookingsResults.length === 1 && searchType !== 'centerId') {
+        res.json(bookingsResults[0]);
+      } else {
+        res.json({ bookings: bookingsResults, count: bookingsResults.length });
+      }
     } catch (error) {
       console.error("Error searching booking:", error);
       res.status(500).json({ error: "Σφάλμα κατά την αναζήτηση" });

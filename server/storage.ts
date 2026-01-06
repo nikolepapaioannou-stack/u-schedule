@@ -112,6 +112,8 @@ export interface IStorage {
   addBookingHistory(entry: { bookingId: string; eventType: BookingHistoryEventType; description: string; performedBy?: string; metadata?: string }): Promise<BookingHistory>;
   getBookingHistory(bookingId: string): Promise<BookingHistory[]>;
   getBookingByConfirmationNumber(confirmationNumber: string): Promise<Booking | undefined>;
+  getBookingsByDepartmentId(departmentId: string): Promise<Booking[]>;
+  getBookingsByCenterId(centerId: string): Promise<Booking[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -726,6 +728,20 @@ export class DatabaseStorage implements IStorage {
       .from(bookings)
       .where(eq(bookings.confirmationNumber, confirmationNumber));
     return result[0];
+  }
+
+  async getBookingsByDepartmentId(departmentId: string): Promise<Booking[]> {
+    return db.select()
+      .from(bookings)
+      .where(eq(bookings.departmentId, departmentId))
+      .orderBy(desc(bookings.createdAt));
+  }
+
+  async getBookingsByCenterId(centerId: string): Promise<Booking[]> {
+    return db.select()
+      .from(bookings)
+      .where(eq(bookings.centerId, centerId))
+      .orderBy(desc(bookings.createdAt));
   }
 }
 
