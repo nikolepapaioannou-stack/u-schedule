@@ -170,6 +170,15 @@ export default function BookingDetailsScreen() {
     setShowPhotoModal(true);
   };
 
+  const handleSimpleCompletion = () => {
+    crossPlatformConfirm(
+      "Δήλωση Ανάρτησης Voucher",
+      "Επιβεβαιώνετε ότι έχετε αναρτήσει τους κωδικούς επιταγής πιστοποίησης; Η δήλωση θα αποσταλεί για επαλήθευση.",
+      () => completeVoucherMutation.mutate(null),
+      "Επιβεβαίωση"
+    );
+  };
+
   const handleSubmitVoucher = () => {
     crossPlatformConfirm(
       "Δήλωση Ανάρτησης Voucher",
@@ -399,16 +408,30 @@ export default function BookingDetailsScreen() {
                   </View>
                   
                   {canComplete ? (
-                    <Pressable
-                      style={[
-                        styles.voucherButton,
-                        { backgroundColor: theme.primary },
-                      ]}
-                      onPress={handleStartVoucherCompletion}
-                    >
-                      <MaterialCommunityIcons name="camera" size={18} color="#fff" />
-                      <Text style={styles.voucherButtonText}>Δήλωση με Φωτογραφία</Text>
-                    </Pressable>
+                    <View style={styles.voucherButtonsRow}>
+                      <Pressable
+                        style={[
+                          styles.voucherButton,
+                          styles.voucherButtonHalf,
+                          { backgroundColor: theme.success },
+                        ]}
+                        onPress={handleSimpleCompletion}
+                      >
+                        <MaterialCommunityIcons name="check" size={18} color="#fff" />
+                        <Text style={styles.voucherButtonText}>Ολοκλήρωση</Text>
+                      </Pressable>
+                      <Pressable
+                        style={[
+                          styles.voucherButton,
+                          styles.voucherButtonHalf,
+                          { backgroundColor: theme.primary },
+                        ]}
+                        onPress={handleStartVoucherCompletion}
+                      >
+                        <MaterialCommunityIcons name="camera" size={18} color="#fff" />
+                        <Text style={styles.voucherButtonText}>Με Φωτογραφία</Text>
+                      </Pressable>
+                    </View>
                   ) : null}
                   
                   {voucherStatus === "verified" ? (
@@ -682,6 +705,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+  voucherButtonsRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
   voucherButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -690,6 +717,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     borderRadius: BorderRadius.md,
     gap: Spacing.sm,
+  },
+  voucherButtonHalf: {
+    flex: 1,
+    paddingHorizontal: Spacing.sm,
   },
   voucherButtonText: {
     color: "#fff",
