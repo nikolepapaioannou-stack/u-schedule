@@ -333,16 +333,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }, 60000);
 
-  // One-time seed endpoint to create superadmin (can be removed after use)
-  app.get("/api/seed-admin", async (req, res) => {
+  // One-time seed endpoint to create superadmin (remove after first use)
+  app.post("/api/seed-admin", async (req, res) => {
     try {
-      const email = "nikolaki001@gmail.com";
+      const { email, password, secretKey } = req.body;
+      
+      // Require secret key for security
+      if (secretKey !== process.env.SESSION_SECRET) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email and password required" });
+      }
+      
       const existing = await storage.getUserByEmail(email);
       if (existing) {
         return res.json({ message: "Superadmin already exists", email });
       }
       
-      const hashedPassword = hashPassword("Admin123!");
+      const hashedPassword = hashPassword(password);
       const user = await storage.createUserWithRole({
         email,
         password: hashedPassword,
