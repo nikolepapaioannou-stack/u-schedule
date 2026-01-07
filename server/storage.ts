@@ -284,7 +284,9 @@ export class DatabaseStorage implements IStorage {
 
   async createBooking(booking: InsertBooking & { userId: string }): Promise<Booking> {
     const confirmationNumber = await this.getNextConfirmationNumber();
-    const holdExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    const currentSettings = await this.getSettings();
+const holdDurationMinutes = currentSettings.holdDurationMinutes || 15;
+const holdExpiresAt = new Date(Date.now() + holdDurationMinutes * 60 * 1000);
     
     const result = await db.insert(bookings).values({
       ...booking,
