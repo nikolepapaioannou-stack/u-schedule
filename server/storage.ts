@@ -75,6 +75,8 @@ export interface IStorage {
   updateBooking(id: string, booking: Partial<Booking>): Promise<Booking | undefined>;
   deleteBooking(id: string): Promise<void>;
   releaseExpiredHolds(): Promise<number>;
+  getExpiredHoldBookings(): Promise<Booking[]>;
+  expireBookingHold(id: string): Promise<Booking | undefined>;
   
   getNotificationsByUserId(userId: string): Promise<Notification[]>;
   getUnreadNotificationCount(userId: string): Promise<number>;
@@ -285,8 +287,8 @@ export class DatabaseStorage implements IStorage {
   async createBooking(booking: InsertBooking & { userId: string }): Promise<Booking> {
     const confirmationNumber = await this.getNextConfirmationNumber();
     const currentSettings = await this.getSettings();
-const holdDurationMinutes = currentSettings.holdDurationMinutes || 15;
-const holdExpiresAt = new Date(Date.now() + holdDurationMinutes * 60 * 1000);
+    const holdDurationMinutes = currentSettings.holdDurationMinutes || 15;
+    const holdExpiresAt = new Date(Date.now() + holdDurationMinutes * 60 * 1000);
     
     const result = await db.insert(bookings).values({
       ...booking,
@@ -337,6 +339,25 @@ const holdExpiresAt = new Date(Date.now() + holdDurationMinutes * 60 * 1000);
       )
       .returning();
     return result.length;
+  }
+
+  async getExpiredHoldBookings(): Promise<Booking[]> {
+    const now = new Date();
+    return db.select().from(bookings)
+      .where(
+        and(
+          eq(bookings.status, "holding"),
+          lte(bookings.holdExpiresAt, now)
+        )
+      );
+  }
+
+  async expireBookingHold(id: string): Promise<Booking | undefined> {
+    const result = await db.update(bookings)
+      .set({ status: "expired", updatedAt: new Date() })
+      .where(eq(bookings.id, id))
+      .returning();
+    return result[0];
   }
 
   async getNotificationsByUserId(userId: string): Promise<Notification[]> {

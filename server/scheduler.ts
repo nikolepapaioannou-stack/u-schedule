@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { storage } from './storage';
+import { sendExpoPushNotification, sendPushToAdmins } from './push-notifications';
 
 function addDays(date: Date, days: number): Date {
   const result = new Date(date);
@@ -59,6 +60,14 @@ async function sendDailyAdminReminder() {
       message: `Υπάρχουν ${bookings.length} εξετάσεις προγραμματισμένες για ${getGreekDateString(targetDateStr)} που απαιτούν ανάρτηση κωδικών επιταγής πιστοποίησης. Τμήματα: ${departmentList}. Παρακαλώ ελέγξτε αν έχουν αναρτηθεί οι κωδικοί.`,
       bookingId: bookings[0]?.id,
     });
+    
+    await sendExpoPushNotification(
+      admin.id,
+      'Υπενθύμιση Voucher',
+      `${bookings.length} εξετάσεις χρειάζονται ανάρτηση κωδικών για ${formatDateDDMMYYYY(targetDateStr)}`,
+      { type: 'admin_reminder' }
+    );
+    
     console.log(`[Scheduler] Sent reminder to admin ${admin.email}`);
   }
   
@@ -73,6 +82,13 @@ async function sendDailyAdminReminder() {
         message: `Η εξέταση για το τμήμα ${booking.departmentId} είναι προγραμματισμένη για ${getGreekDateString(targetDateStr)}. Παρακαλώ βεβαιωθείτε ότι έχετε αναρτήσει τους κωδικούς επιταγής πιστοποίησης μέχρι και ${deadlineDate} στις 12:00μ.μ.`,
         bookingId: booking.id,
       });
+      
+      await sendExpoPushNotification(
+        user.id,
+        'Υπενθύμιση Voucher',
+        `Αναρτήστε τους κωδικούς επιταγής πιστοποίησης μέχρι ${deadlineDate} 12:00μ.μ.`,
+        { type: 'action_reminder', bookingId: booking.id }
+      );
     }
     await storage.markWarningSent(booking.id);
   }
@@ -123,6 +139,13 @@ async function checkDeadlines() {
         message: `Η εξέταση για το τμήμα ${booking.departmentId} (${examDateFormatted}) ακυρώθηκε λόγω μη ανάρτησης των κωδικών επιταγής πιστοποίησης μέχρι την προθεσμία (12:00μ.μ. μια ημέρα πριν).`,
         bookingId: booking.id,
       });
+      
+      await sendExpoPushNotification(
+        user.id,
+        'Εξέταση Ακυρώθηκε',
+        `Η εξέταση ${booking.departmentId} (${examDateFormatted}) ακυρώθηκε λόγω μη ανάρτησης voucher.`,
+        { type: 'booking_cancelled', bookingId: booking.id }
+      );
     }
     
     for (const admin of admins) {
@@ -133,16 +156,100 @@ async function checkDeadlines() {
         message: `Η εξέταση του τμήματος ${booking.departmentId} (${examDateFormatted}) ακυρώθηκε αυτόματα λόγω μη ανάρτησης των κωδικών επιταγής πιστοποίησης.`,
         bookingId: booking.id,
       });
+      
+      await sendExpoPushNotification(
+        admin.id,
+        'Αυτόματη Ακύρωση',
+        `Τμήμα ${booking.departmentId} (${examDateFormatted}) ακυρώθηκε αυτόματα.`,
+        { type: 'booking_auto_cancelled', bookingId: booking.id }
+      );
     }
   }
   
   console.log('[Scheduler] Deadline check completed');
 }
 
+async function sendExamReminders() {
+  console.log('[Scheduler] Running exam reminder job...');
+  
+  const tomorrow = addDays(new Date(), 1);
+  const tomorrowStr = formatDate(tomorrow);
+  
+  const bookings = await storage.getApprovedBookingsByDate(tomorrowStr);
+  
+  if (bookings.length === 0) {
+    console.log('[Scheduler] No exams scheduled for tomorrow', tomorrowStr);
+    return;
+  }
+  
+  console.log(`[Scheduler] Found ${bookings.length} exams for tomorrow`);
+  
+  for (const booking of bookings) {
+    const user = await storage.getUser(booking.userId);
+    if (user) {
+      await storage.createNotification({
+        userId: user.id,
+        type: 'exam_reminder',
+        title: 'Υπενθύμιση Εξέτασης',
+        message: `Η εξέταση για το τμήμα ${booking.departmentId} είναι αύριο. Βεβαιωθείτε ότι όλα είναι έτοιμα.`,
+        bookingId: booking.id,
+      });
+      
+      await sendExpoPushNotification(
+        user.id,
+        'Εξέταση Αύριο',
+        `Υπενθύμιση: Η εξέταση ${booking.departmentId} είναι αύριο!`,
+        { type: 'exam_reminder', bookingId: booking.id }
+      );
+    }
+  }
+  
+  console.log('[Scheduler] Exam reminders sent');
+}
+
+async function releaseExpiredHolds() {
+  console.log('[Scheduler] Checking for expired holds...');
+  
+  const expiredBookings = await storage.getExpiredHoldBookings();
+  
+  if (expiredBookings.length === 0) {
+    console.log('[Scheduler] No expired holds found');
+    return;
+  }
+  
+  console.log(`[Scheduler] Found ${expiredBookings.length} expired holds`);
+  
+  for (const booking of expiredBookings) {
+    await storage.expireBookingHold(booking.id);
+    
+    const user = await storage.getUser(booking.userId);
+    if (user) {
+      await storage.createNotification({
+        userId: user.id,
+        type: 'hold_expired',
+        title: 'Κράτηση Έληξε',
+        message: `Η κράτηση για το τμήμα ${booking.departmentId} έληξε λόγω μη επιβεβαίωσης εντός του χρονικού ορίου.`,
+        bookingId: booking.id,
+      });
+      
+      await sendExpoPushNotification(
+        user.id,
+        'Κράτηση Έληξε',
+        `Η κράτηση ${booking.departmentId} έληξε. Παρακαλώ κάντε νέα κράτηση.`,
+        { type: 'hold_expired', bookingId: booking.id }
+      );
+    }
+    
+    console.log(`[Scheduler] Released hold for booking ${booking.id}`);
+  }
+}
+
 async function runManualCheck() {
   console.log('[Scheduler] Running manual check...');
   await sendDailyAdminReminder();
   await checkDeadlines();
+  await sendExamReminders();
+  await releaseExpiredHolds();
   console.log('[Scheduler] Manual check completed');
 }
 
@@ -152,6 +259,7 @@ export function initScheduler() {
   cron.schedule('0 8 * * *', async () => {
     console.log('[Scheduler] Running 08:00 daily reminder job');
     await sendDailyAdminReminder();
+    await sendExamReminders();
   }, {
     timezone: 'Europe/Athens'
   });
@@ -163,9 +271,17 @@ export function initScheduler() {
     timezone: 'Europe/Athens'
   });
   
+  cron.schedule('*/5 * * * *', async () => {
+    await releaseExpiredHolds();
+  }, {
+    timezone: 'Europe/Athens'
+  });
+  
   console.log('[Scheduler] Scheduler initialized with:');
   console.log('  - Daily reminder at 08:00 Europe/Athens');
   console.log('  - Deadline check at 12:00 Europe/Athens');
+  console.log('  - Exam reminders at 08:00 Europe/Athens');
+  console.log('  - Hold expiry check every 5 minutes');
 }
 
-export { runManualCheck, sendDailyAdminReminder, checkDeadlines };
+export { runManualCheck, sendDailyAdminReminder, checkDeadlines, sendExamReminders, releaseExpiredHolds };
