@@ -5,7 +5,7 @@ let Notifications: any = null;
 let Device: any = null;
 let Constants: any = null;
 
-if (Platform.OS === "ios") {
+if (Platform.OS === "ios" || Platform.OS === "android") {
   Notifications = require("expo-notifications");
   Device = require("expo-device");
   Constants = require("expo-constants");
@@ -19,6 +19,15 @@ if (Platform.OS === "ios") {
       shouldShowList: true,
     }),
   });
+
+  if (Platform.OS === "android") {
+    Notifications.setNotificationChannelAsync("default", {
+      name: "default",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: "#FF231F7C",
+    });
+  }
 }
 
 export interface PushNotificationState {
@@ -33,7 +42,7 @@ export interface PermissionResult {
 }
 
 export async function getNotificationPermissionStatus(): Promise<PermissionResult> {
-  if (Platform.OS === "web" || Platform.OS === "android" || !Notifications) {
+  if (Platform.OS === "web" || !Notifications) {
     return { granted: false, canAskAgain: false, shouldOpenSettings: false };
   }
   
@@ -46,7 +55,7 @@ export async function getNotificationPermissionStatus(): Promise<PermissionResul
 }
 
 async function registerForPushNotificationsAsync(): Promise<string | null> {
-  if (Platform.OS === "web" || Platform.OS === "android" || !Notifications || !Device) {
+  if (Platform.OS === "web" || !Notifications || !Device) {
     console.log("Push notifications are not available on this platform");
     return null;
   }
@@ -78,6 +87,7 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
     const token = await Notifications.getExpoPushTokenAsync({
       projectId: projectId || undefined,
     });
+    console.log("Push token obtained:", token.data);
     return token.data;
   } catch (error) {
     console.error("Error getting push token:", error);
@@ -109,6 +119,7 @@ export async function registerPushToken(authToken: string): Promise<{ success: b
       return { success: false, token: pushToken };
     }
     
+    console.log("Push token registered successfully");
     return { success: true, token: pushToken };
   } catch (error) {
     console.error("Failed to register push token:", error);

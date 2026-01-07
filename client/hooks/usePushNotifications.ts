@@ -16,7 +16,7 @@ export function usePushNotifications() {
   const responseListener = useRef<{ remove: () => void } | null>(null);
 
   const registerForNotifications = useCallback(async () => {
-    if (!token || Platform.OS === "web" || Platform.OS === "android") {
+    if (!token || Platform.OS === "web") {
       return;
     }
 
@@ -36,7 +36,7 @@ export function usePushNotifications() {
   }, [user, token, registerForNotifications]);
 
   useEffect(() => {
-    if (Platform.OS === "web" || Platform.OS === "android") {
+    if (Platform.OS === "web") {
       return;
     }
 
